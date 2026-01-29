@@ -1,12 +1,14 @@
 // src/components/Game/GameBoard.js
-import React from "react";
+import React, { useState, useEffect } from "react";
 import useSnakeGame from "../../hooks/useSnakeGame";
+
+// UI Components
+import GameHUD from "../UI/GameHUD";
+import GameOverlay from "../UI/GameOverlay";
 import Minimap from "../UI/Minimap";
 import MobileControls from "../UI/MobileControls";
 
-// Imported Sub-Components
-import GameHUD from "../UI/GameHUD";
-import GameOverlay from "../UI/GameOverlay";
+// 3D Scene
 import GameScene from "./GameScene";
 
 import "./GameBoard.css";
@@ -15,6 +17,10 @@ const GameBoard = ({ onGameEnd }) => {
   const COLS = 60;
   const ROWS = 60;
 
+  // 1. CAMERA STATE
+  const [cameraMode, setCameraMode] = useState("FOLLOW"); // Options: FOLLOW, TOP, POV
+
+  // 2. GAME LOGIC HOOK
   const {
     snake,
     food,
@@ -28,24 +34,61 @@ const GameBoard = ({ onGameEnd }) => {
     togglePause,
     isInvincible,
     hasShield,
-    isMagnet, // <--- Get new props
+    isMagnet,
   } = useSnakeGame(COLS, ROWS);
 
-  // --- Handlers ---
+  // --- HANDLERS ---
+
   const handleExit = () => onGameEnd(score);
+
+  // Mobile Turn Handlers (Only work if not paused)
   const handleTurnLeft = () => !isPaused && setDir({ x: dir.y, y: -dir.x });
   const handleTurnRight = () => !isPaused && setDir({ x: -dir.y, y: dir.x });
 
+  // Camera Toggle Handler
+  const cycleCamera = () => {
+    setCameraMode((prev) => {
+      if (prev === "FOLLOW") return "TOP";
+      if (prev === "TOP") return "POV";
+      return "FOLLOW";
+    });
+  };
+
+  // --- KEYBOARD LISTENERS ---
+  useEffect(() => {
+    const handleKey = (e) => {
+      // Press 'C' to switch camera
+      if (e.key.toLowerCase() === "c") {
+        cycleCamera();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
   return (
     <div className="game-container">
-      {/* 1. Add "SAFE MODE" text to HUD if active */}
+      {/* 1. HEADS UP DISPLAY (Score, Buttons) */}
       <GameHUD
         score={score}
         isPaused={isPaused}
         onTogglePause={togglePause}
         onExit={handleExit}
+        onCycleCamera={cycleCamera}
+        cameraMode={cameraMode}
       />
 
+      {/* 2. OVERLAYS (Pause Menu, Game Over Screen) */}
+      <GameOverlay
+        isPaused={isPaused}
+        gameOver={gameOver}
+        score={score}
+        onResume={togglePause}
+        onRestart={resetGame}
+        onQuit={handleExit}
+      />
+
+      {/* 3. VISUAL INDICATOR FOR IMMUNITY */}
       {isInvincible && !gameOver && (
         <div
           style={{
@@ -59,35 +102,20 @@ const GameBoard = ({ onGameEnd }) => {
             textShadow: "0 2px 4px rgba(0,0,0,0.5)",
             zIndex: 80,
             animation: "pulse 0.5s infinite",
+            pointerEvents: "none",
           }}>
           🛡️ IMMUNITY ACTIVE 🛡️
         </div>
       )}
 
-      {/* 2. OVERLAYS (Pause / Game Over) */}
-      <GameOverlay
-        isPaused={isPaused}
-        gameOver={gameOver}
-        score={score}
-        onResume={togglePause}
-        onRestart={resetGame}
-        onQuit={handleExit}
-      />
-
-      {/* 3. 2D UI ELEMENTS */}
-      <Minimap
-        snake={snake}
-        food={food}
-        obstacles={obstacles}
-        size={COLS}
-        dir={dir}
-      />
+      {/* 4. 2D HELPERS (Minimap, Touch Controls) */}
+      <Minimap snake={snake} food={food} obstacles={obstacles} size={COLS} />
       <MobileControls
         onTurnLeft={handleTurnLeft}
         onTurnRight={handleTurnRight}
       />
 
-      {/* 4. 3D SCENE */}
+      {/* 5. THE 3D WORLD */}
       <GameScene
         snake={snake}
         food={food}
@@ -96,8 +124,9 @@ const GameBoard = ({ onGameEnd }) => {
         cols={COLS}
         rows={ROWS}
         isInvincible={isInvincible}
-        hasShield={hasShield} // <--- Pass down
-        isMagnet={isMagnet} // <--- Pass down
+        hasShield={hasShield}
+        isMagnet={isMagnet}
+        cameraMode={cameraMode}
       />
     </div>
   );

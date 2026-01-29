@@ -1,48 +1,78 @@
 // src/components/Game/CameraController.js
 import { useFrame, useThree } from "@react-three/fiber";
-import { Vector3 } from "three";
+import * as THREE from "three";
+import { useEffect, useRef } from "react";
 
-const CameraController = ({ snakeHead, dir }) => {
+const CameraController = ({ snakeHead, dir, mode }) => {
   const { camera } = useThree();
+  const targetPos = useRef(new THREE.Vector3(0, 0, 0));
+  const lookAtPos = useRef(new THREE.Vector3(0, 0, 0));
 
-  // Settings for the camera view
-  const DISTANCE_BEHIND = 12; // How far back the camera sits
-  const CAMERA_HEIGHT = 6; // How high the camera sits
-  const LOOK_AHEAD = 4; // Look slightly in front of the head
+  useEffect(() => {
+    // Initial camera setup
+    if (snakeHead) {
+      camera.position.set(snakeHead.x, 15, snakeHead.y + 10);
+    }
+  }, []);
 
   useFrame((state, delta) => {
-    if (!snakeHead || !dir) return;
+    if (!snakeHead) return;
 
-    // 1. Calculate where the camera SHOULD be (Ideal Position)
-    // We want to be behind the snake, so we subtract the direction vector
-    // Note: In 3D, 'y' from logic is 'z' on screen.
-    const idealOffset = new Vector3(
-      -dir.x * DISTANCE_BEHIND,
-      CAMERA_HEIGHT,
-      -dir.y * DISTANCE_BEHIND,
+    // 1. Determine Target Position based on Mode
+    let desiredOffset = new THREE.Vector3();
+    let desiredLookAtOffset = new THREE.Vector3();
+    let smoothing = 4; // Higher = Snappier, Lower = Smoother
+
+    switch (mode) {
+      case "TOP":
+        // High up, centered on snake, fixed orientation
+        // We ignore 'dir' so the map doesn't spin
+        desiredOffset.set(0, 35, 10);
+        desiredLookAtOffset.set(0, 0, 0);
+        smoothing = 2; // Slower pan
+        break;
+
+      case "POV":
+        // Inside the head, looking forward
+        // We place camera slightly in front and above eyes
+        desiredOffset.set(dir.x * 0.5, 0.6, dir.y * 0.5);
+        desiredLookAtOffset.set(dir.x * 5, 0, dir.y * 5); // Look far ahead
+        smoothing = 10; // Must be fast to prevent motion sickness
+        break;
+
+      case "FOLLOW":
+      default:
+        // Behind and above
+        // We calculate "Behind" by inverting the direction
+        desiredOffset.set(-dir.x * 6, 8, -dir.y * 6);
+        desiredLookAtOffset.set(dir.x * 4, 0, dir.y * 4); // Look slightly ahead
+        smoothing = 3; // Smooth cinematic follow
+        break;
+    }
+
+    // 2. Calculate World Positions
+    // Target Camera Position
+    const finalCamPos = new THREE.Vector3(
+      snakeHead.x + desiredOffset.x,
+      desiredOffset.y, // Y is usually absolute, not relative to head Y (unless jumping)
+      snakeHead.y + desiredOffset.z,
     );
 
-    const targetPos = new Vector3(snakeHead.x, 0, snakeHead.y).add(idealOffset);
-
-    // 2. Smoothly move camera to that position (Lerp)
-    // 'delta * 2' controls the swing speed.
-    camera.position.lerp(targetPos, delta * 2.5);
-
-    // 3. Look at a point slightly in front of the snake
-    const targetLookAt = new Vector3(
-      snakeHead.x + dir.x * LOOK_AHEAD,
+    // Target Look-At Point
+    const finalLookAt = new THREE.Vector3(
+      snakeHead.x + desiredLookAtOffset.x,
       0,
-      snakeHead.y + dir.y * LOOK_AHEAD,
+      snakeHead.y + desiredLookAtOffset.z,
     );
 
-    // Smoothly rotate the camera to look at the target
-    // We cheat slightly by using an invisible dummy vector to lerp the 'lookAt'
-    const currentLookAt = camera.userData.currentLookAt || new Vector3();
-    currentLookAt.lerp(targetLookAt, delta * 3);
-    camera.lookAt(currentLookAt);
+    // 3. Smooth Interpolation (Lerp)
+    // We smooth the current ref values, then apply to camera
+    targetPos.current.lerp(finalCamPos, delta * smoothing);
+    lookAtPos.current.lerp(finalLookAt, delta * smoothing);
 
-    // Store the current lookAt for the next frame smoothing
-    camera.userData.currentLookAt = currentLookAt;
+    // 4. Apply to Camera
+    camera.position.copy(targetPos.current);
+    camera.lookAt(lookAtPos.current);
   });
 
   return null;

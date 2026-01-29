@@ -1,0 +1,167 @@
+/* src/components/Game/GameBoard.css */
+
+.game-container {
+  width: 100vw;
+  height: 100vh;
+  background-color: #80deea; /* Matches sky */
+  overflow: hidden;
+  position: relative;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* --- HUD (Heads Up Display) --- */
+.hud {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 25px;
+  border-radius: 50px; /* Full pill shape */
+  color: #0277bd; /* Deep Blue text */
+  font-weight: 800;
+  font-size: 1.2rem;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 4px 15px rgba(0, 100, 200, 0.2);
+  border: 3px solid #4fc3f7; /* Light Blue border */
+  transition: transform 0.2s;
+}
+
+.hud:hover {
+  transform: scale(1.05);
+}
+
+.pause-btn {
+  background: transparent;
+  border: 2px solid #0288d1;
+  color: #0288d1;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto; /* Pushes it to the right, next to exit */
+  margin-right: 10px;
+  transition: all 0.2s ease;
+}
+
+.pause-btn:hover {
+  background: #0288d1;
+  color: white;
+  transform: scale(1.1);
+}
+
+.exit-btn-small {
+  background: #ff5252;
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.exit-btn-small:hover {
+  background: #d32f2f;
+}
+
+/* --- GAME OVER OVERLAY --- */
+.game-over-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Frosted Glass Effect */
+  background-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #37474f;
+  z-index: 200;
+  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.game-over-overlay h2 {
+  font-size: 3rem;
+  margin: 0;
+  color: #0277bd;
+  text-shadow: 0 2px 0px rgba(255, 255, 255, 0.8);
+}
+
+.game-over-overlay p {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 10px 0 30px 0;
+  color: #546e7a;
+}
+
+/* --- BUTTONS --- */
+.overlay-btns {
+  display: flex;
+  gap: 20px;
+}
+
+.overlay-btns button {
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 800;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
+  transition:
+    transform 0.1s,
+    box-shadow 0.1s,
+    filter 0.2s;
+}
+
+.overlay-btns button:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+/* "Try Again" - Green Gradient */
+.overlay-btns button:first-child {
+  background: linear-gradient(to bottom, #66bb6a, #43a047);
+}
+.overlay-btns button:first-child:hover {
+  filter: brightness(1.1);
+}
+
+/* "Quit" - Red Gradient */
+.overlay-btns .danger-btn {
+  background: linear-gradient(to bottom, #ff5252, #d32f2f);
+}
+.overlay-btns .danger-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* --- ANIMATIONS --- */
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

@@ -1,6 +1,5 @@
 // src/components/Obstacle/Obstacles3D.js
 import React, { useMemo } from "react";
-import * as THREE from "three";
 
 // 🌲 GRAND PINE TREE
 const PineTree = ({ position, scale = 1 }) => {

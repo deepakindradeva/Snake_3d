@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { DIRECTIONS } from "../utils/constants";
 
 // --- CONFIG ---
-const MAP_SIZE = 60;
-const OBSTACLE_LIMIT = 600;
+const MAP_SIZE = 20;
+const OBSTACLE_LIMIT = 2;
 
 // CONFIG: Expanded Food List
 const FRUIT_TYPES = [

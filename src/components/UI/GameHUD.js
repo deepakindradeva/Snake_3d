@@ -1,38 +1,37 @@
 // src/components/UI/GameHUD.js
 import React from "react";
 
-const GameHUD = ({
-  score,
-  isPaused,
-  onTogglePause,
-  onExit,
-  onCycleCamera,
-  cameraMode,
-}) => {
+const GameHUD = ({ score, distance, isPaused, onTogglePause, onExit }) => {
   return (
-    <div className="hud">
-      <div className="score-board">
-        <span>Score: {score}</span>
+    <>
+      {/* --- LEFT: STATS PANEL --- */}
+      <div className="hud-stats">
+        <div className="stat-row">
+          <span className="stat-icon">🏆</span>
+          <span className="stat-value">{score}</span>
+        </div>
+        <div className="stat-divider"></div>
+        <div className="stat-row">
+          <span className="stat-icon">👣</span>
+          <span className="stat-value">{distance}m</span>
+        </div>
       </div>
 
-      {/* Camera Button */}
-      <button
-        className="icon-btn"
-        onClick={onCycleCamera}
-        title="Switch Camera (C)">
-        {cameraMode === "FOLLOW" && "🎥"}
-        {cameraMode === "TOP" && "🚁"}
-        {cameraMode === "POV" && "👀"}
-      </button>
+      {/* --- RIGHT: ACTION BUTTONS --- */}
+      <div className="hud-controls">
+        {/* Pause Toggle */}
+        <button
+          className={`hud-btn pause-btn ${isPaused ? "active" : ""}`}
+          onClick={onTogglePause}>
+          {isPaused ? "▶" : "⏸"}
+        </button>
 
-      <button className="pause-btn" onClick={onTogglePause}>
-        {isPaused ? "▶" : "⏸"}
-      </button>
-
-      <button className="exit-btn-small" onClick={onExit}>
-        ✕
-      </button>
-    </div>
+        {/* Exit Button */}
+        <button className="hud-btn exit-btn" onClick={onExit}>
+          ✕
+        </button>
+      </div>
+    </>
   );
 };
 

@@ -1,37 +1,48 @@
 // src/components/UI/Minimap.js
 import React from "react";
 
-const Minimap = ({ snake, food, obstacles, size }) => {
+const Minimap = ({ snake, foods, obstacles, size }) => {
   // CONFIGURATION
-  const MAP_SIZE = 140; // Size of the widget in pixels
-  const ZOOM_RADIUS = 15; // How many tiles we see in each direction
+  const MAP_SIZE = 140;
+  const ZOOM_RADIUS = 15; // The actual visible radius logic
 
-  // Calculate the scale: Map pixels per Game tile
-  // We want to fit (ZOOM_RADIUS * 2) tiles into MAP_SIZE
+  // Scale: How many pixels per game tile
   const scale = MAP_SIZE / (ZOOM_RADIUS * 2);
 
   const head = snake[0] || { x: 0, y: 0 };
 
-  // Helper to convert Game Coordinates -> Minimap Coordinates
-  // Returns relative position centered on the snake
-  const getRelativePos = (x, y) => {
-    // 1. Calculate distance from snake head
-    const dx = x - head.x;
-    const dy = y - head.y;
+  // Helper to get position relative to center of minimap
+  // RETURNS: { left, top, isOutOfBounds, rotation (if out of bounds) }
+  const getDisplayProps = (targetX, targetY) => {
+    const dx = targetX - head.x;
+    const dy = targetY - head.y;
 
-    // 2. Scale it up to pixels
-    // 3. Add half map size to center it (0,0 becomes center of widget)
+    // Distance from snake head
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Default: It is inside the view
+    if (dist <= ZOOM_RADIUS) {
+      return {
+        left: dx * scale + MAP_SIZE / 2,
+        top: dy * scale + MAP_SIZE / 2,
+        isOutOfBounds: false,
+      };
+    }
+
+    // Out of Bounds Logic: Clamp to edge
+    // 1. Calculate angle
+    const angle = Math.atan2(dy, dx);
+
+    // 2. Place on the edge (radius of the widget is MAP_SIZE / 2)
+    // We subtract a small margin (e.g. 10px) so the icon doesn't clip slightly
+    const edgeRadius = MAP_SIZE / 2 - 8;
+
     return {
-      left: dx * scale + MAP_SIZE / 2,
-      top: dy * scale + MAP_SIZE / 2,
+      left: Math.cos(angle) * edgeRadius + MAP_SIZE / 2,
+      top: Math.sin(angle) * edgeRadius + MAP_SIZE / 2,
+      isOutOfBounds: true,
+      angle: angle, // Useful if we want to rotate an arrow
     };
-  };
-
-  // Helper: Is this point inside the radar circle?
-  const isVisible = (x, y) => {
-    const dx = Math.abs(x - head.x);
-    const dy = Math.abs(y - head.y);
-    return dx < ZOOM_RADIUS && dy < ZOOM_RADIUS;
   };
 
   const getFoodColor = (type) => {
@@ -42,6 +53,8 @@ const Minimap = ({ snake, food, obstacles, size }) => {
         return "#880E4F";
       case "ice":
         return "#00B0FF";
+      case "star":
+        return "#FFD700";
       default:
         return "#D32F2F";
     }
@@ -55,57 +68,89 @@ const Minimap = ({ snake, food, obstacles, size }) => {
         left: "20px",
         width: `${MAP_SIZE}px`,
         height: `${MAP_SIZE}px`,
-        borderRadius: "50%", // Circle Shape
-        backgroundColor: "rgba(255, 255, 255, 0.7)", // Frosted Glass
+        borderRadius: "50%",
+        backgroundColor: "rgba(255, 255, 255, 0.7)",
         backdropFilter: "blur(5px)",
         border: "4px solid #fff",
-        boxShadow: "0 8px 32px rgba(0, 100, 200, 0.2)", // Soft Blue Shadow
-        overflow: "hidden",
+        boxShadow: "0 8px 32px rgba(0, 100, 200, 0.2)",
+        overflow: "hidden", // Keeps things circular
         zIndex: 90,
-        transform: "rotate(180deg)", // Optional: Matches coordinate system if needed
+        transform: "rotate(180deg)",
       }}>
-      {/* 1. OBSTACLES (Only render nearby ones) */}
-      {obstacles
-        .filter((o) => isVisible(o.x, o.y))
-        .map((obs) => {
-          const pos = getRelativePos(obs.x, obs.y);
-          // Different colors for rocks vs trees
-          const color = obs.type === "rock" ? "#90A4AE" : "#66BB6A";
-          const sizePx = obs.type === "rock" ? scale * 1.2 : scale * 0.8;
+      {/* 1. OBSTACLES (Only nearby ones) */}
+      {obstacles.map((obs) => {
+        const props = getDisplayProps(obs.x, obs.y);
+        // Don't show obstacles that are far away, clutter
+        if (props.isOutOfBounds) return null;
+
+        const color = obs.type === "rock" ? "#90A4AE" : "#66BB6A";
+        const sizePx = obs.type === "rock" ? scale * 1.2 : scale * 0.8;
+
+        return (
+          <div
+            key={obs.id}
+            style={{
+              position: "absolute",
+              left: props.left,
+              top: props.top,
+              width: `${sizePx}px`,
+              height: `${sizePx}px`,
+              backgroundColor: color,
+              borderRadius: obs.type === "rock" ? "20%" : "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+        );
+      })}
+
+      {/* 2. FOOD (Show ALL of them, even far away) */}
+      {foods &&
+        foods.map((f) => {
+          const props = getDisplayProps(f.x, f.y);
+          const color = getFoodColor(f.type);
 
           return (
             <div
-              key={obs.id}
+              key={f.id}
               style={{
                 position: "absolute",
-                left: pos.left,
-                top: pos.top,
-                width: `${sizePx}px`,
-                height: `${sizePx}px`,
+                left: props.left,
+                top: props.top,
+                // If far away, make it smaller
+                width: props.isOutOfBounds ? `${scale}px` : `${scale * 1.8}px`,
+                height: props.isOutOfBounds ? `${scale}px` : `${scale * 1.8}px`,
                 backgroundColor: color,
-                borderRadius: obs.type === "rock" ? "20%" : "50%",
-                transform: "translate(-50%, -50%)", // Center on coordinate
+                borderRadius: "50%",
+                boxShadow: `0 0 6px ${color}`,
+                // If far away, blink faster or look different
+                animation: props.isOutOfBounds
+                  ? "pulse 0.5s infinite"
+                  : "pulse 1s infinite",
+                transform: "translate(-50%, -50%)",
+                zIndex: 15,
+                // Optional: Add an arrow if out of bounds?
+                // For now, just sticking to the edge is usually enough cue.
               }}
             />
           );
         })}
 
-      {/* 2. SNAKE BODY */}
+      {/* 3. SNAKE BODY */}
       {snake.map((segment, i) => {
-        if (!isVisible(segment.x, segment.y)) return null;
-        const pos = getRelativePos(segment.x, segment.y);
-        const isHead = i === 0;
+        const props = getDisplayProps(segment.x, segment.y);
+        if (props.isOutOfBounds) return null;
 
+        const isHead = i === 0;
         return (
           <div
             key={i}
             style={{
               position: "absolute",
-              left: pos.left,
-              top: pos.top,
+              left: props.left,
+              top: props.top,
               width: isHead ? `${scale * 1.5}px` : `${scale}px`,
               height: isHead ? `${scale * 1.5}px` : `${scale}px`,
-              backgroundColor: isHead ? "#0277BD" : "#29B6F6", // Dark head, light body
+              backgroundColor: isHead ? "#0277BD" : "#29B6F6",
               borderRadius: "50%",
               transform: "translate(-50%, -50%)",
               zIndex: isHead ? 10 : 5,
@@ -114,29 +159,7 @@ const Minimap = ({ snake, food, obstacles, size }) => {
         );
       })}
 
-      {/* 3. FOOD */}
-      {isVisible(food.x, food.y) && (
-        <div
-          style={{
-            position: "absolute",
-            left: getRelativePos(food.x, food.y).left,
-            top: getRelativePos(food.x, food.y).top,
-            width: `${scale * 1.8}px`,
-            height: `${scale * 1.8}px`,
-            backgroundColor: getFoodColor(food.type),
-            borderRadius: "50%",
-            boxShadow: `0 0 6px ${getFoodColor(food.type)}`,
-            animation: "pulse 1s infinite", // Make it blink
-            transform: "translate(-50%, -50%)",
-            zIndex: 15,
-          }}
-        />
-      )}
-
-      {/* 4. PLAYER MARKER (Center Crosshair) */}
-      {/* Since map moves around us, we are always effectively at center, 
-          but drawing the snake body above handles this visual. 
-          We can add a faint grid or ring to look cool. */}
+      {/* Center Grid Lines */}
       <div
         style={{
           position: "absolute",

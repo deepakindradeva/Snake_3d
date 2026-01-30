@@ -5,9 +5,12 @@ import { DIRECTIONS } from "../utils/gameUtils";
 const useSnake = (cols, rows) => {
   const [snake, setSnake] = useState([]);
   const [dir, setDir] = useState(DIRECTIONS.RIGHT);
-  const [growthBank, setGrowthBank] = useState(0);
 
-  // Use ref for direction to avoid closure staleness in event listeners
+  // CHANGE: growthBank is now a Ref.
+  // This is crucial. It allows us to track growth WITHOUT triggering
+  // a re-render of the 'moveSnake' function in the parent hook.
+  const growthBankRef = useRef(0);
+
   const dirRef = useRef(DIRECTIONS.RIGHT);
 
   const resetSnake = useCallback(() => {
@@ -18,7 +21,7 @@ const useSnake = (cols, rows) => {
     );
     setDir(DIRECTIONS.RIGHT);
     dirRef.current = DIRECTIONS.RIGHT;
-    setGrowthBank(0);
+    growthBankRef.current = 0; // Reset ref
   }, [cols, rows]);
 
   const turnLeft = useCallback(() => {
@@ -33,14 +36,19 @@ const useSnake = (cols, rows) => {
     dirRef.current = newDir;
   }, []);
 
+  // Helper to add growth safely
+  const addGrowth = useCallback((amount) => {
+    growthBankRef.current += amount;
+  }, []);
+
   return {
     snake,
     setSnake,
     dir,
     setDir,
     dirRef,
-    growthBank,
-    setGrowthBank,
+    growthBankRef, // Export Ref instead of state
+    addGrowth, // Export helper
     resetSnake,
     turnLeft,
     turnRight,

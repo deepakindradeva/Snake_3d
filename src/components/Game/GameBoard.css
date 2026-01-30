@@ -3,117 +3,120 @@
 .game-container {
   width: 100vw;
   height: 100vh;
-  background-color: #80deea; /* Matches sky */
+  background-color: #80deea;
   overflow: hidden;
   position: relative;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  user-select: none;
 }
 
-/* --- HUD (Heads Up Display) --- */
-.hud {
+/* --- STATS PANEL (Top Left) --- */
+.hud-stats {
   position: absolute;
   top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 10px 25px;
-  border-radius: 50px; /* Full pill shape */
-  color: #0277bd; /* Deep Blue text */
-  font-weight: 800;
-  font-size: 1.2rem;
-  z-index: 100;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   gap: 15px;
-  box-shadow: 0 4px 15px rgba(0, 100, 200, 0.2);
-  border: 3px solid #4fc3f7; /* Light Blue border */
-  transition: transform 0.2s;
+  border: 2px solid white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  pointer-events: none; /* Let clicks pass through if needed */
 }
 
-.hud:hover {
-  transform: scale(1.05);
-}
-/* src/components/Game/GameBoard.css */
-.icon-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 1.2rem;
+.stat-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-right: 10px;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(4px);
+  gap: 6px;
 }
 
-.icon-btn:hover {
-  background: rgba(255, 255, 255, 0.4);
-  transform: scale(1.05);
+.stat-icon {
+  font-size: 1.2rem;
 }
 
-/* Update .hud to align items better */
-.hud {
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #37474f;
+  font-variant-numeric: tabular-nums; /* Prevents jitter when numbers change */
+}
+
+.stat-divider {
+  width: 2px;
+  height: 20px;
+  background-color: #cfd8dc;
+}
+
+/* --- ACTION BUTTONS (Top Right) --- */
+.hud-controls {
   position: absolute;
   top: 20px;
   right: 20px;
   display: flex;
-  align-items: center;
-  gap: 10px; /* Space between buttons */
+  gap: 12px; /* Space between buttons */
   z-index: 100;
-  pointer-events: auto;
 }
 
-/* Remove margin-left: auto from pause-btn since we use flex gap now */
-.pause-btn {
-  margin-left: 0;
-  margin-right: 0;
-}
-.pause-btn {
-  background: transparent;
-  border: 2px solid #0288d1;
-  color: #0288d1;
-  width: 35px;
-  height: 35px;
+.hud-btn {
+  width: 50px; /* Large touch target */
+  height: 50px;
   border-radius: 50%;
-  cursor: pointer;
-  font-size: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: auto; /* Pushes it to the right, next to exit */
-  margin-right: 10px;
-  transition: all 0.2s ease;
-}
-
-.pause-btn:hover {
-  background: #0288d1;
-  color: white;
-  transform: scale(1.1);
-}
-
-.exit-btn-small {
-  background: #ff5252;
-  border: none;
-  color: white;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  font-size: 1.4rem;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(4px);
+  color: #37474f;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.exit-btn-small:hover {
-  background: #d32f2f;
+.hud-btn:active {
+  transform: scale(0.9);
+}
+
+/* Specific Colors */
+.camera-btn {
+  background: rgba(33, 150, 243, 0.8); /* Blue */
+  color: white;
+  border: 2px solid #64b5f6;
+}
+
+.pause-btn {
+  background: rgba(255, 235, 59, 0.9); /* Yellow */
+  color: #f57f17;
+  border: 2px solid #fff176;
+}
+.pause-btn.active {
+  background: #fbc02d; /* Darker yellow when paused */
+  color: white;
+  animation: pulseBtn 1s infinite;
+}
+
+.exit-btn {
+  background: rgba(244, 67, 54, 0.85); /* Red */
+  color: white;
+  border: 2px solid #e57373;
+}
+
+@keyframes pulseBtn {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* --- GAME OVER OVERLAY --- */
@@ -123,7 +126,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  /* Frosted Glass Effect */
   background-color: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(8px);
   display: flex;
@@ -149,7 +151,7 @@
   color: #546e7a;
 }
 
-/* --- BUTTONS --- */
+/* --- OVERLAY BUTTONS --- */
 .overlay-btns {
   display: flex;
   gap: 20px;
@@ -177,23 +179,14 @@
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
 }
 
-/* "Try Again" - Green Gradient */
 .overlay-btns button:first-child {
   background: linear-gradient(to bottom, #66bb6a, #43a047);
 }
-.overlay-btns button:first-child:hover {
-  filter: brightness(1.1);
-}
 
-/* "Quit" - Red Gradient */
 .overlay-btns .danger-btn {
   background: linear-gradient(to bottom, #ff5252, #d32f2f);
 }
-.overlay-btns .danger-btn:hover {
-  filter: brightness(1.1);
-}
 
-/* --- ANIMATIONS --- */
 @keyframes popIn {
   from {
     opacity: 0;

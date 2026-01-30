@@ -2,31 +2,33 @@
 import React, { useState, useEffect } from "react";
 import useSnakeGame from "../../hooks/useSnakeGame";
 
-// UI Components
 import GameHUD from "../UI/GameHUD";
 import GameOverlay from "../UI/GameOverlay";
 import Minimap from "../UI/Minimap";
 import MobileControls from "../UI/MobileControls";
-
-// 3D Scene
 import GameScene from "./GameScene";
 
 import "./GameBoard.css";
 
-const GameBoard = ({ onGameEnd }) => {
+// RECEIVE DIFFICULTY PROP
+const GameBoard = ({ onGameEnd, difficulty }) => {
   const COLS = 60;
   const ROWS = 60;
 
-  // 1. CAMERA STATE
-  const [cameraMode, setCameraMode] = useState("FOLLOW"); // Options: FOLLOW, TOP, POV
+  const [cameraMode, setCameraMode] = useState("FOLLOW");
 
-  // 2. GAME LOGIC HOOK
+  // PASS DIFFICULTY TO HOOK
   const {
     snake,
-    food,
+    foods,
     obstacles,
+    effects,
+    removeEffect,
     gameOver,
     score,
+    distance,
+    speed,
+    moveSnake,
     resetGame,
     dir,
     setDir,
@@ -35,17 +37,13 @@ const GameBoard = ({ onGameEnd }) => {
     isInvincible,
     hasShield,
     isMagnet,
-  } = useSnakeGame(COLS, ROWS);
-
-  // --- HANDLERS ---
+  } = useSnakeGame(COLS, ROWS, difficulty);
 
   const handleExit = () => onGameEnd(score);
 
-  // Mobile Turn Handlers (Only work if not paused)
   const handleTurnLeft = () => !isPaused && setDir({ x: dir.y, y: -dir.x });
   const handleTurnRight = () => !isPaused && setDir({ x: -dir.y, y: dir.x });
 
-  // Camera Toggle Handler
   const cycleCamera = () => {
     setCameraMode((prev) => {
       if (prev === "FOLLOW") return "TOP";
@@ -54,10 +52,8 @@ const GameBoard = ({ onGameEnd }) => {
     });
   };
 
-  // --- KEYBOARD LISTENERS ---
   useEffect(() => {
     const handleKey = (e) => {
-      // Press 'C' to switch camera
       if (e.key.toLowerCase() === "c") {
         cycleCamera();
       }
@@ -68,17 +64,14 @@ const GameBoard = ({ onGameEnd }) => {
 
   return (
     <div className="game-container">
-      {/* 1. HEADS UP DISPLAY (Score, Buttons) */}
       <GameHUD
         score={score}
+        distance={distance}
         isPaused={isPaused}
         onTogglePause={togglePause}
         onExit={handleExit}
-        onCycleCamera={cycleCamera}
-        cameraMode={cameraMode}
       />
 
-      {/* 2. OVERLAYS (Pause Menu, Game Over Screen) */}
       <GameOverlay
         isPaused={isPaused}
         gameOver={gameOver}
@@ -88,7 +81,6 @@ const GameBoard = ({ onGameEnd }) => {
         onQuit={handleExit}
       />
 
-      {/* 3. VISUAL INDICATOR FOR IMMUNITY */}
       {isInvincible && !gameOver && (
         <div
           style={{
@@ -108,18 +100,18 @@ const GameBoard = ({ onGameEnd }) => {
         </div>
       )}
 
-      {/* 4. 2D HELPERS (Minimap, Touch Controls) */}
-      <Minimap snake={snake} food={food} obstacles={obstacles} size={COLS} />
+      <Minimap snake={snake} foods={foods} obstacles={obstacles} size={COLS} />
       <MobileControls
         onTurnLeft={handleTurnLeft}
         onTurnRight={handleTurnRight}
       />
 
-      {/* 5. THE 3D WORLD */}
       <GameScene
         snake={snake}
-        food={food}
+        foods={foods}
         obstacles={obstacles}
+        effects={effects}
+        removeEffect={removeEffect}
         dir={dir}
         cols={COLS}
         rows={ROWS}
@@ -127,6 +119,10 @@ const GameBoard = ({ onGameEnd }) => {
         hasShield={hasShield}
         isMagnet={isMagnet}
         cameraMode={cameraMode}
+        moveSnake={moveSnake}
+        speed={speed}
+        isPaused={isPaused}
+        gameOver={gameOver}
       />
     </div>
   );

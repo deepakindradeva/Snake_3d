@@ -7,18 +7,43 @@ import {
 } from "../utils/gameUtils";
 
 const RENDER_DISTANCE = 25;
+const MAX_FOOD_ITEMS = 6;
 
-const useWorld = (cols, rows) => {
+const useWorld = (cols, rows, difficulty) => {
   const [obstacles, setObstacles] = useState([]);
-  const [food, setFood] = useState({ x: 0, y: 0, type: "apple" });
   const obstaclesRef = useRef([]);
 
-  // Initialize World
+  const [foods, setFoods] = useState([]);
+  const foodsRef = useRef([]);
+
+  const createFood = (snakeHead, idOverride = null) => {
+    const nextType = getRandomFruit();
+    const range = 25;
+    const foodX = Math.min(
+      Math.max(2, snakeHead.x + (Math.random() * range * 2 - range)),
+      cols - 2,
+    );
+    const foodY = Math.min(
+      Math.max(2, snakeHead.y + (Math.random() * range * 2 - range)),
+      rows - 2,
+    );
+    return {
+      x: Math.floor(foodX),
+      y: Math.floor(foodY),
+      type: nextType,
+      id: idOverride || Date.now() + Math.random(),
+    };
+  };
+
   const resetWorld = useCallback(
     (snakeHead) => {
+      // 1. DETERMINE OBSTACLE COUNT BASED ON DIFFICULTY
+      let obsCount = 20; // Default Medium
+      if (difficulty === "EASY") obsCount = 10;
+      if (difficulty === "HARD") obsCount = 50;
+
       const initialObs = [];
-      // Spawn 30 initial obstacles away from snake
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < obsCount; i++) {
         const pos = getRandomPos(cols, rows);
         if (
           Math.abs(pos.x - snakeHead.x) > 5 ||
@@ -36,24 +61,45 @@ const useWorld = (cols, rows) => {
       }
       setObstacles(initialObs);
       obstaclesRef.current = initialObs;
-      setFood({ x: snakeHead.x + 10, y: snakeHead.y, type: "apple" });
+
+      const initialFoods = [];
+      for (let i = 0; i < MAX_FOOD_ITEMS; i++) {
+        initialFoods.push(createFood(snakeHead, `init-${i}`));
+      }
+      setFoods(initialFoods);
+      foodsRef.current = initialFoods;
+    },
+    [cols, rows, difficulty],
+  );
+
+  const removeAndRespawnFood = useCallback(
+    (eatenId, snakeHead) => {
+      setFoods((prevFoods) => {
+        const filtered = prevFoods.filter((f) => f.id !== eatenId);
+        const newFood = createFood(snakeHead);
+        const nextFoods = [...filtered, newFood];
+        foodsRef.current = nextFoods;
+        return nextFoods;
+      });
     },
     [cols, rows],
   );
 
-  // The "Infinite Window" Logic
   const updateWorld = useCallback(
     (snakeHead, snakeDir) => {
-      // 1. Filter old obstacles (behind us)
+      // Determine spawn chance based on difficulty
+      // Harder difficulty = Higher chance to spawn new obstacles ahead
+      let spawnChance = 0.2; // Medium
+      if (difficulty === "EASY") spawnChance = 0.1;
+      if (difficulty === "HARD") spawnChance = 0.4;
+
       let currentObs = obstaclesRef.current.filter((o) => {
         const dx = Math.abs(o.x - snakeHead.x);
         const dy = Math.abs(o.y - snakeHead.y);
         return dx < RENDER_DISTANCE && dy < RENDER_DISTANCE;
       });
 
-      // 2. Spawn new obstacles (ahead of us)
-      if (Math.random() < 0.2) {
-        // 20% chance
+      if (Math.random() < spawnChance) {
         const spawnDist = 15 + Math.floor(Math.random() * 10);
         const spawnX =
           snakeHead.x +
@@ -87,34 +133,17 @@ const useWorld = (cols, rows) => {
         obstaclesRef.current = currentObs;
       }
     },
-    [cols, rows],
-  );
-
-  const respawnFood = useCallback(
-    (snakeHead) => {
-      const nextType = getRandomFruit();
-      // Spawn food roughly near the player
-      const foodX = Math.min(
-        Math.max(2, snakeHead.x + (Math.random() * 20 - 10)),
-        cols - 2,
-      );
-      const foodY = Math.min(
-        Math.max(2, snakeHead.y + (Math.random() * 20 - 10)),
-        rows - 2,
-      );
-      setFood({ x: Math.floor(foodX), y: Math.floor(foodY), type: nextType });
-    },
-    [cols, rows],
+    [cols, rows, difficulty],
   );
 
   return {
     obstacles,
     obstaclesRef,
-    food,
-    setFood,
+    foods,
+    foodsRef,
     resetWorld,
     updateWorld,
-    respawnFood,
+    removeAndRespawnFood,
   };
 };
 

@@ -15,17 +15,13 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
     "/snake-normal.jpg",
   ]);
 
-  // 2. CONFIGURE & CLEANUP TEXTURES (This is the part you asked about)
+  // 2. CONFIGURE TEXTURES
   useEffect(() => {
-    // Setup texture repeating
     [colorMap, normalMap].forEach((tex) => {
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(4, 1);
     });
-
-    // CLEANUP: Dispose of textures when game restarts/unmounts
-    // This prevents "Context Lost" crashes
     return () => {
       colorMap.dispose();
       normalMap.dispose();
@@ -37,7 +33,7 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
     snake.map((p) => new THREE.Vector3(p.x, 0, p.y)),
   );
 
-  // Growth Logic
+  // Sync visual points size with logical snake size
   useEffect(() => {
     if (snake.length > visualPoints.length) {
       const tail = visualPoints[visualPoints.length - 1];
@@ -52,38 +48,55 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
   useFrame((state, delta) => {
     if (!meshRef.current) return;
 
-    // A. Smooth Movement
+    // --- A. SMOOTH MOVEMENT & SLITHER LOGIC ---
     const speed = delta * 12;
+    const time = state.clock.elapsedTime;
+
     snake.forEach((target, i) => {
       if (visualPoints[i]) {
         const targetVec = new THREE.Vector3(target.x, 0, target.y);
-        // Slither Wiggle
+
+        // SLITHER CALCULATION (Moderate Wiggle from before)
         if (i > 0) {
-          const wave = Math.sin(state.clock.elapsedTime * 8 + i * 0.4) * 0.06;
-          targetVec.x += wave;
+          const prev = snake[i - 1] || snake[0];
+          const curr = snake[i];
+
+          const dx = prev.x - curr.x;
+          const dy = prev.y - curr.y;
+
+          const waveFreq = 0.6;
+          const waveAmp = 0.18;
+          const waveSpeed = 8;
+          const wave = Math.sin(time * waveSpeed + i * waveFreq) * waveAmp;
+
+          if (Math.abs(dx) > Math.abs(dy)) {
+            targetVec.z += wave;
+          } else {
+            targetVec.x += wave;
+          }
         }
         visualPoints[i].lerp(targetVec, speed);
       }
     });
 
-    // B. Generate Low-Poly Geometry (Prevents Crashing)
+    // --- B. GENERATE GEOMETRY ---
     const curve = new THREE.CatmullRomCurve3(visualPoints);
     curve.curveType = "centripetal";
     curve.tension = 0.5;
 
-    // OPTIMIZATION: Reduced segments for mobile performance
-    const segments = snake.length * 3;
-    const radialSegments = 6;
+    const segments = snake.length * 5;
+    const radialSegments = 8;
 
+    // Geometry props (Radius 0.25)
     const geometry = new THREE.TubeGeometry(
       curve,
       segments,
-      0.45,
+      0.25,
       radialSegments,
       false,
     );
 
-    // C. Taper Logic (Manual vertex manipulation)
+    // --- C. TAPER TAIL LOGIC ---
     const pos = geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
@@ -94,7 +107,6 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
       const ringIndex = Math.floor(i / (radialSegments + 1));
       const u = ringIndex / segments;
 
-      // Taper Tail
       let thickness = 1.0;
       if (u > 0.7) {
         thickness = 1.0 - ((u - 0.7) / 0.3) * 0.9;
@@ -103,23 +115,21 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
       const center = curve.getPointAt(Math.min(u, 1));
       const dir = new THREE.Vector3().subVectors(p, center);
 
-      dir.y *= 0.7; // Flatten belly
-      dir.multiplyScalar(thickness); // Apply taper
+      dir.y *= 0.85;
+      dir.multiplyScalar(thickness);
 
       const newPos = new THREE.Vector3().addVectors(center, dir);
       pos.setXYZ(i, newPos.x, newPos.y, newPos.z);
     }
     geometry.computeVertexNormals();
 
-    // Update Texture Repeat
     colorMap.repeat.y = snake.length * 0.5;
     normalMap.repeat.y = snake.length * 0.5;
 
-    // Clean up old geometry from memory immediately
     meshRef.current.geometry.dispose();
     meshRef.current.geometry = geometry;
 
-    // D. Update Head & Tail Positions
+    // --- D. UPDATE HEAD & TAIL ---
     if (headRef.current && visualPoints[0] && visualPoints[1]) {
       headRef.current.position.copy(visualPoints[0]);
       headRef.current.lookAt(visualPoints[1]);
@@ -129,10 +139,10 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
     if (tailRef.current && visualPoints.length > 1) {
       const lastIndex = visualPoints.length - 1;
       tailRef.current.position.copy(visualPoints[lastIndex]);
-      tailRef.current.scale.set(0.1, 0.1, 0.1);
+      tailRef.current.scale.set(0.08, 0.08, 0.08);
     }
 
-    // E. Invincibility Blink Effect
+    // --- E. EFFECTS (Invincibility only) ---
     if (isInvincible) {
       const flash = Math.sin(state.clock.elapsedTime * 15) * 0.5 + 0.5;
       meshRef.current.material.opacity = 0.5 + flash * 0.5;
@@ -142,6 +152,7 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
     } else {
       meshRef.current.material.opacity = 1.0;
       meshRef.current.material.transparent = false;
+      // Reset to original (No glow)
       meshRef.current.material.emissive.setHex(0x000000);
       meshRef.current.material.emissiveIntensity = 0;
     }
@@ -158,23 +169,22 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
           normalScale={new THREE.Vector2(0.8, 0.8)}
           roughness={0.4}
           metalness={0.1}
-          color="#81C784"
+          color="#81C784" // <--- Reverted to Original Green
         />
       </mesh>
 
       {/* HEAD */}
-      <group ref={headRef}>
+      <group ref={headRef} scale={[0.65, 0.65, 0.65]}>
         <mesh>
           <sphereGeometry args={[0.44, 16, 16]} />
           <meshStandardMaterial
             map={colorMap}
             normalMap={normalMap}
             roughness={0.4}
-            color="#81C784"
+            color="#81C784" // <--- Reverted to Original Green
           />
         </mesh>
 
-        {/* ABILITY VISUALS ATTACHED TO HEAD */}
         {/* Shield Bubble */}
         {hasShield && (
           <mesh>
@@ -195,7 +205,7 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
           </mesh>
         )}
 
-        {/* Eyes */}
+        {/* Eyes - Reverted to Original Yellow/Gold */}
         <group position={[0, 0.2, 0.25]}>
           <mesh position={[0.15, 0, 0]}>
             <sphereGeometry args={[0.12]} />
@@ -213,6 +223,7 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
               emissiveIntensity={0.5}
             />
           </mesh>
+          {/* Pupils */}
           <mesh position={[0.18, 0.05, 0.08]} scale={[0.5, 1.5, 0.5]}>
             <sphereGeometry args={[0.06]} />
             <meshStandardMaterial color="black" />
@@ -222,6 +233,7 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
             <meshStandardMaterial color="black" />
           </mesh>
         </group>
+        {/* Tongue */}
         <mesh position={[0, -0.1, 0.4]} rotation={[0.2, 0, 0]}>
           <cylinderGeometry args={[0.02, 0.08, 0.4]} />
           <meshStandardMaterial color="#D50000" roughness={0.1} />
@@ -230,12 +242,12 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
 
       {/* TAIL */}
       <mesh ref={tailRef} castShadow>
-        <sphereGeometry args={[0.43, 16, 16]} />
+        <sphereGeometry args={[0.25, 16, 16]} />
         <meshStandardMaterial
           map={colorMap}
           normalMap={normalMap}
           roughness={0.4}
-          color="#81C784"
+          color="#81C784" // <--- Reverted to Original Green
         />
       </mesh>
     </group>

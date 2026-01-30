@@ -4,51 +4,80 @@ import useSnake from "./useSnake";
 import useWorld from "./useWorld";
 import { FRUIT_TYPES } from "../utils/gameUtils";
 
-const useSnakeGame = (cols, rows) => {
-  // 1. GAME STATUS STATE
+const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
-  const [speed, setSpeed] = useState(300);
+  const [distance, setDistance] = useState(0);
 
-  // Abilities
+  // Initial speed based on difficulty
+  const getInitialSpeed = () => {
+    switch (difficulty) {
+      case "HARD":
+        return 150; // Fast
+      case "EASY":
+        return 350; // Slow
+      default:
+        return 250; // Medium
+    }
+  };
+
+  const [speed, setSpeed] = useState(getInitialSpeed());
+
+  // ABILITIES
   const [isInvincible, setIsInvincible] = useState(false);
   const [hasShield, setHasShield] = useState(false);
   const [isMagnet, setIsMagnet] = useState(false);
+  const [effects, setEffects] = useState([]);
 
-  // 2. SUB-HOOKS
-  // FIX: Added 'setDir' to the destructuring list below
   const {
     snake,
     setSnake,
     dir,
     setDir,
-    dirRef,
-    growthBank,
-    setGrowthBank,
+    growthBankRef,
+    addGrowth,
     resetSnake,
     turnLeft,
     turnRight,
   } = useSnake(cols, rows);
 
+  // PASS DIFFICULTY TO WORLD
   const {
     obstacles,
     obstaclesRef,
-    food,
-    setFood,
+    foods,
+    foodsRef,
     resetWorld,
     updateWorld,
-    respawnFood,
-  } = useWorld(cols, rows);
+    removeAndRespawnFood,
+  } = useWorld(cols, rows, difficulty);
 
-  // Audio Helper
   const playSound = (type) => {
     const audio = new Audio(`/sounds/${type}.mp3`);
     audio.volume = 0.5;
     audio.play().catch(() => {});
   };
 
-  // --- INITIALIZATION ---
+  const triggerEffect = (position, type) => {
+    let color = "#FFF";
+    if (type === "apple") color = "#D32F2F";
+    if (type === "banana") color = "#FFEB3B";
+    if (type === "ice") color = "#00E5FF";
+    if (type === "shield") color = "#2979FF";
+    const newEffect = {
+      id: Date.now() + Math.random(),
+      x: position.x,
+      y: position.y,
+      color: color,
+    };
+    setEffects((prev) => [...prev, newEffect]);
+  };
+
+  const removeEffect = useCallback((id) => {
+    setEffects((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
   const initGame = useCallback(() => {
     const startX = Math.floor(cols / 2);
     const startY = Math.floor(rows / 2);
@@ -58,17 +87,17 @@ const useSnakeGame = (cols, rows) => {
 
     setGameOver(false);
     setScore(0);
-    setSpeed(300);
+    setDistance(0);
+    setSpeed(getInitialSpeed()); // Reset speed using difficulty
     setIsPaused(false);
+    setEffects([]);
 
-    // Reset Abilities
     setIsInvincible(true);
     setHasShield(false);
     setIsMagnet(false);
     setTimeout(() => setIsInvincible(false), 5000);
-  }, [cols, rows, resetSnake, resetWorld]);
+  }, [cols, rows, resetSnake, resetWorld, difficulty]);
 
-  // Init on mount
   useEffect(() => {
     if (snake.length === 0) initGame();
   }, [initGame, snake.length]);
@@ -77,7 +106,7 @@ const useSnakeGame = (cols, rows) => {
     if (!gameOver) setIsPaused((p) => !p);
   }, [gameOver]);
 
-  // --- MAIN GAME LOOP ---
+  // --- MANUAL MOVE FUNCTION ---
   const moveSnake = useCallback(() => {
     if (gameOver || isPaused) return;
 
@@ -85,21 +114,18 @@ const useSnakeGame = (cols, rows) => {
       const head = prevSnake[0];
       const newHead = { x: head.x + dir.x, y: head.y + dir.y };
 
-      // 1. UPDATE WORLD (Infinite Spawner)
       updateWorld(newHead, dir);
 
-      // 2. COLLISION CHECK
+      // COLLISION CHECK
       let isCrash = false;
-      // Wall Check
       if (
         newHead.x < 0 ||
         newHead.x >= cols ||
         newHead.y < 0 ||
         newHead.y >= rows
-      )
+      ) {
         isCrash = true;
-      // Obstacle Check
-      else {
+      } else {
         for (let obs of obstaclesRef.current) {
           if (obs.x === newHead.x && obs.y === newHead.y) {
             isCrash = true;
@@ -109,11 +135,11 @@ const useSnakeGame = (cols, rows) => {
       }
 
       if (isCrash) {
-        if (isInvincible) return prevSnake; // Ghost Mode
+        if (isInvincible) return prevSnake;
         if (hasShield) {
           playSound("shield_break");
           setHasShield(false);
-          return prevSnake; // Bounce off
+          return prevSnake;
         }
         playSound("crash");
         setGameOver(true);
@@ -121,23 +147,27 @@ const useSnakeGame = (cols, rows) => {
       }
 
       const newSnake = [newHead, ...prevSnake];
+      setDistance((d) => d + 1);
 
-      // 3. EATING CHECK
-      const dist = Math.abs(newHead.x - food.x) + Math.abs(newHead.y - food.y);
       const eatRange = isMagnet ? 3 : 0;
+      const eatenFood = foodsRef.current.find((f) => {
+        const dist = Math.abs(newHead.x - f.x) + Math.abs(newHead.y - f.y);
+        return dist <= eatRange;
+      });
 
-      if (dist <= eatRange) {
+      if (eatenFood) {
         playSound("eat");
+        triggerEffect(eatenFood, eatenFood.type);
         const fruitStats =
-          FRUIT_TYPES.find((f) => f.type === food.type) || FRUIT_TYPES[0];
+          FRUIT_TYPES.find((f) => f.type === eatenFood.type) || FRUIT_TYPES[0];
 
-        // Apply Stats
         setScore((s) => s + fruitStats.score);
-        setSpeed((s) => Math.min(Math.max(50, s + fruitStats.speedMod), 500));
 
-        // Apply Growth/Shrink
-        if (fruitStats.grow > 0)
-          setGrowthBank((g) => g + (fruitStats.grow - 1));
+        // Cap max speed so it doesn't become impossible
+        const maxSpeed = difficulty === "HARD" ? 100 : 150;
+        setSpeed((s) => Math.max(maxSpeed, s + fruitStats.speedMod));
+
+        if (fruitStats.grow > 0) addGrowth(fruitStats.grow - 1);
         else if (fruitStats.grow < 0) {
           const shrinkAmt = Math.abs(fruitStats.grow);
           for (let i = 0; i < shrinkAmt; i++)
@@ -145,7 +175,6 @@ const useSnakeGame = (cols, rows) => {
           newSnake.pop();
         }
 
-        // Apply Abilities
         if (fruitStats.effect === "invincible") {
           setIsInvincible(true);
           setTimeout(() => setIsInvincible(false), 5000);
@@ -156,10 +185,9 @@ const useSnakeGame = (cols, rows) => {
           setTimeout(() => setIsMagnet(false), 10000);
         }
 
-        respawnFood(newHead);
+        removeAndRespawnFood(eatenFood.id, newHead);
       } else {
-        // Normal Move (Shrink tail if not growing)
-        if (growthBank > 0) setGrowthBank((g) => g - 1);
+        if (growthBankRef.current > 0) growthBankRef.current -= 1;
         else newSnake.pop();
       }
 
@@ -169,27 +197,21 @@ const useSnakeGame = (cols, rows) => {
     gameOver,
     isPaused,
     dir,
-    food,
-    growthBank,
     isInvincible,
     hasShield,
     isMagnet,
     obstaclesRef,
+    foodsRef,
+    growthBankRef,
+    addGrowth,
     updateWorld,
-    respawnFood,
-    setGrowthBank,
+    removeAndRespawnFood,
     cols,
     rows,
+    difficulty,
   ]);
 
-  // Interval
-  useEffect(() => {
-    if (gameOver || isPaused) return;
-    const interval = setInterval(moveSnake, speed);
-    return () => clearInterval(interval);
-  }, [moveSnake, gameOver, isPaused, speed]);
-
-  // Controls
+  // FIX: corrected cleanup function name
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "Escape" || e.key.toLowerCase() === "p") {
@@ -201,15 +223,20 @@ const useSnakeGame = (cols, rows) => {
       if (e.key === "ArrowRight") turnRight();
     };
     window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress); // FIXED HERE
   }, [isPaused, togglePause, turnLeft, turnRight]);
 
   return {
     snake,
-    food,
+    foods,
     obstacles,
+    effects,
+    removeEffect,
     gameOver,
     score,
+    distance,
+    speed,
+    moveSnake,
     resetGame: initGame,
     dir,
     setDir,

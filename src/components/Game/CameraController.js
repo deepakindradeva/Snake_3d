@@ -13,6 +13,10 @@ const CameraController = ({ snakeHead, dir, mode }) => {
     if (snakeHead) {
       camera.position.set(snakeHead.x, 15, snakeHead.y + 10);
     }
+    // We intentionally ignore dependencies here because we only want
+    // this to run ONCE on mount to set the start position.
+    // Adding dependencies would cause the camera to snap-reset every frame.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useFrame((state, delta) => {
@@ -26,7 +30,6 @@ const CameraController = ({ snakeHead, dir, mode }) => {
     switch (mode) {
       case "TOP":
         // High up, centered on snake, fixed orientation
-        // We ignore 'dir' so the map doesn't spin
         desiredOffset.set(0, 35, 10);
         desiredLookAtOffset.set(0, 0, 0);
         smoothing = 2; // Slower pan
@@ -34,7 +37,6 @@ const CameraController = ({ snakeHead, dir, mode }) => {
 
       case "POV":
         // Inside the head, looking forward
-        // We place camera slightly in front and above eyes
         desiredOffset.set(dir.x * 0.5, 0.6, dir.y * 0.5);
         desiredLookAtOffset.set(dir.x * 5, 0, dir.y * 5); // Look far ahead
         smoothing = 10; // Must be fast to prevent motion sickness
@@ -43,7 +45,6 @@ const CameraController = ({ snakeHead, dir, mode }) => {
       case "FOLLOW":
       default:
         // Behind and above
-        // We calculate "Behind" by inverting the direction
         desiredOffset.set(-dir.x * 6, 8, -dir.y * 6);
         desiredLookAtOffset.set(dir.x * 4, 0, dir.y * 4); // Look slightly ahead
         smoothing = 3; // Smooth cinematic follow
@@ -51,14 +52,12 @@ const CameraController = ({ snakeHead, dir, mode }) => {
     }
 
     // 2. Calculate World Positions
-    // Target Camera Position
     const finalCamPos = new THREE.Vector3(
       snakeHead.x + desiredOffset.x,
-      desiredOffset.y, // Y is usually absolute, not relative to head Y (unless jumping)
+      desiredOffset.y,
       snakeHead.y + desiredOffset.z,
     );
 
-    // Target Look-At Point
     const finalLookAt = new THREE.Vector3(
       snakeHead.x + desiredLookAtOffset.x,
       0,
@@ -66,7 +65,6 @@ const CameraController = ({ snakeHead, dir, mode }) => {
     );
 
     // 3. Smooth Interpolation (Lerp)
-    // We smooth the current ref values, then apply to camera
     targetPos.current.lerp(finalCamPos, delta * smoothing);
     lookAtPos.current.lerp(finalLookAt, delta * smoothing);
 

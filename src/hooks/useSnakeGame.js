@@ -10,7 +10,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   const [score, setScore] = useState(0);
   const [distance, setDistance] = useState(0);
 
-  // FIX: Wrapped in useCallback to be a stable dependency
+  // LINTER FIX: Wrapped in useCallback for stable dependency
   const getInitialSpeed = useCallback(() => {
     switch (difficulty) {
       case "HARD":
@@ -24,6 +24,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
   const [speed, setSpeed] = useState(getInitialSpeed());
 
+  // ABILITIES
   const [isInvincible, setIsInvincible] = useState(false);
   const [hasShield, setHasShield] = useState(false);
   const [isMagnet, setIsMagnet] = useState(false);
@@ -94,7 +95,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setHasShield(false);
     setIsMagnet(false);
     setTimeout(() => setIsInvincible(false), 5000);
-  }, [cols, rows, resetSnake, resetWorld, getInitialSpeed]); // FIX: Added getInitialSpeed
+  }, [cols, rows, resetSnake, resetWorld, getInitialSpeed]);
 
   useEffect(() => {
     if (snake.length === 0) initGame();
@@ -104,6 +105,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     if (!gameOver) setIsPaused((p) => !p);
   }, [gameOver]);
 
+  // --- MANUAL MOVE FUNCTION ---
   const moveSnake = useCallback(() => {
     if (gameOver || isPaused) return;
 
@@ -113,7 +115,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
       let nextX = head.x + dir.x;
       let nextY = head.y + dir.y;
 
-      // Wrap Logic
+      // 1. ENDLESS WRAPPING LOGIC (Teleport at edges)
       if (nextX < 0) nextX = cols - 1;
       else if (nextX >= cols) nextX = 0;
 
@@ -124,7 +126,10 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
       updateWorld(newHead, dir);
 
+      // 2. COLLISION CHECK
       let isCrash = false;
+
+      // Check Obstacles ONLY
       for (let obs of obstaclesRef.current) {
         if (obs.x === newHead.x && obs.y === newHead.y) {
           isCrash = true;
@@ -132,12 +137,8 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         }
       }
 
-      for (let i = 0; i < prevSnake.length - 1; i++) {
-        if (newHead.x === prevSnake[i].x && newHead.y === prevSnake[i].y) {
-          isCrash = true;
-          break;
-        }
-      }
+      // REMOVED: Self-Collision Loop
+      // The snake can now safely pass through its own body.
 
       if (isCrash) {
         if (isInvincible) return prevSnake;
@@ -154,6 +155,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
       const newSnake = [newHead, ...prevSnake];
       setDistance((d) => d + 1);
 
+      // 3. EATING LOGIC
       const eatRange = isMagnet ? 3 : 0;
       const eatenFood = foodsRef.current.find((f) => {
         const dist = Math.abs(newHead.x - f.x) + Math.abs(newHead.y - f.y);
@@ -213,7 +215,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     difficulty,
     cols,
     rows,
-    setSnake, // FIX: Added setSnake
+    setSnake,
   ]);
 
   useEffect(() => {

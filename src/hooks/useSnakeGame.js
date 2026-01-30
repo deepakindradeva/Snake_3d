@@ -10,21 +10,20 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   const [score, setScore] = useState(0);
   const [distance, setDistance] = useState(0);
 
-  // Initial speed based on difficulty
-  const getInitialSpeed = () => {
+  // FIX: Wrapped in useCallback to be a stable dependency
+  const getInitialSpeed = useCallback(() => {
     switch (difficulty) {
       case "HARD":
-        return 150; // Fast
+        return 150;
       case "EASY":
-        return 350; // Slow
+        return 350;
       default:
-        return 250; // Medium
+        return 250;
     }
-  };
+  }, [difficulty]);
 
   const [speed, setSpeed] = useState(getInitialSpeed());
 
-  // ABILITIES
   const [isInvincible, setIsInvincible] = useState(false);
   const [hasShield, setHasShield] = useState(false);
   const [isMagnet, setIsMagnet] = useState(false);
@@ -42,7 +41,6 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     turnRight,
   } = useSnake(cols, rows);
 
-  // PASS DIFFICULTY TO WORLD
   const {
     obstacles,
     obstaclesRef,
@@ -88,7 +86,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setGameOver(false);
     setScore(0);
     setDistance(0);
-    setSpeed(getInitialSpeed()); // Reset speed using difficulty
+    setSpeed(getInitialSpeed());
     setIsPaused(false);
     setEffects([]);
 
@@ -96,7 +94,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setHasShield(false);
     setIsMagnet(false);
     setTimeout(() => setIsInvincible(false), 5000);
-  }, [cols, rows, resetSnake, resetWorld, difficulty]);
+  }, [cols, rows, resetSnake, resetWorld, getInitialSpeed]); // FIX: Added getInitialSpeed
 
   useEffect(() => {
     if (snake.length === 0) initGame();
@@ -106,31 +104,38 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     if (!gameOver) setIsPaused((p) => !p);
   }, [gameOver]);
 
-  // --- MANUAL MOVE FUNCTION ---
   const moveSnake = useCallback(() => {
     if (gameOver || isPaused) return;
 
     setSnake((prevSnake) => {
       const head = prevSnake[0];
-      const newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+      let nextX = head.x + dir.x;
+      let nextY = head.y + dir.y;
+
+      // Wrap Logic
+      if (nextX < 0) nextX = cols - 1;
+      else if (nextX >= cols) nextX = 0;
+
+      if (nextY < 0) nextY = rows - 1;
+      else if (nextY >= rows) nextY = 0;
+
+      const newHead = { x: nextX, y: nextY };
 
       updateWorld(newHead, dir);
 
-      // COLLISION CHECK
       let isCrash = false;
-      if (
-        newHead.x < 0 ||
-        newHead.x >= cols ||
-        newHead.y < 0 ||
-        newHead.y >= rows
-      ) {
-        isCrash = true;
-      } else {
-        for (let obs of obstaclesRef.current) {
-          if (obs.x === newHead.x && obs.y === newHead.y) {
-            isCrash = true;
-            break;
-          }
+      for (let obs of obstaclesRef.current) {
+        if (obs.x === newHead.x && obs.y === newHead.y) {
+          isCrash = true;
+          break;
+        }
+      }
+
+      for (let i = 0; i < prevSnake.length - 1; i++) {
+        if (newHead.x === prevSnake[i].x && newHead.y === prevSnake[i].y) {
+          isCrash = true;
+          break;
         }
       }
 
@@ -163,7 +168,6 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
         setScore((s) => s + fruitStats.score);
 
-        // Cap max speed so it doesn't become impossible
         const maxSpeed = difficulty === "HARD" ? 100 : 150;
         setSpeed((s) => Math.max(maxSpeed, s + fruitStats.speedMod));
 
@@ -206,12 +210,12 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     addGrowth,
     updateWorld,
     removeAndRespawnFood,
+    difficulty,
     cols,
     rows,
-    difficulty,
+    setSnake, // FIX: Added setSnake
   ]);
 
-  // FIX: corrected cleanup function name
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "Escape" || e.key.toLowerCase() === "p") {
@@ -223,7 +227,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
       if (e.key === "ArrowRight") turnRight();
     };
     window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress); // FIXED HERE
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, [isPaused, togglePause, turnLeft, turnRight]);
 
   return {

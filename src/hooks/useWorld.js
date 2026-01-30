@@ -16,29 +16,32 @@ const useWorld = (cols, rows, difficulty) => {
   const [foods, setFoods] = useState([]);
   const foodsRef = useRef([]);
 
-  const createFood = (snakeHead, idOverride = null) => {
-    const nextType = getRandomFruit();
-    const range = 25;
-    const foodX = Math.min(
-      Math.max(2, snakeHead.x + (Math.random() * range * 2 - range)),
-      cols - 2,
-    );
-    const foodY = Math.min(
-      Math.max(2, snakeHead.y + (Math.random() * range * 2 - range)),
-      rows - 2,
-    );
-    return {
-      x: Math.floor(foodX),
-      y: Math.floor(foodY),
-      type: nextType,
-      id: idOverride || Date.now() + Math.random(),
-    };
-  };
+  // FIX: Wrapped in useCallback to satisfy linter
+  const createFood = useCallback(
+    (snakeHead, idOverride = null) => {
+      const nextType = getRandomFruit();
+      const range = 25;
+      const foodX = Math.min(
+        Math.max(2, snakeHead.x + (Math.random() * range * 2 - range)),
+        cols - 2,
+      );
+      const foodY = Math.min(
+        Math.max(2, snakeHead.y + (Math.random() * range * 2 - range)),
+        rows - 2,
+      );
+      return {
+        x: Math.floor(foodX),
+        y: Math.floor(foodY),
+        type: nextType,
+        id: idOverride || Date.now() + Math.random(),
+      };
+    },
+    [cols, rows],
+  );
 
   const resetWorld = useCallback(
     (snakeHead) => {
-      // 1. DETERMINE OBSTACLE COUNT BASED ON DIFFICULTY
-      let obsCount = 20; // Default Medium
+      let obsCount = 20;
       if (difficulty === "EASY") obsCount = 10;
       if (difficulty === "HARD") obsCount = 50;
 
@@ -69,8 +72,8 @@ const useWorld = (cols, rows, difficulty) => {
       setFoods(initialFoods);
       foodsRef.current = initialFoods;
     },
-    [cols, rows, difficulty],
-  );
+    [cols, rows, difficulty, createFood],
+  ); // FIX: Added createFood to deps
 
   const removeAndRespawnFood = useCallback(
     (eatenId, snakeHead) => {
@@ -82,14 +85,12 @@ const useWorld = (cols, rows, difficulty) => {
         return nextFoods;
       });
     },
-    [cols, rows],
-  );
+    [createFood],
+  ); // FIX: Added createFood to deps
 
   const updateWorld = useCallback(
     (snakeHead, snakeDir) => {
-      // Determine spawn chance based on difficulty
-      // Harder difficulty = Higher chance to spawn new obstacles ahead
-      let spawnChance = 0.2; // Medium
+      let spawnChance = 0.2;
       if (difficulty === "EASY") spawnChance = 0.1;
       if (difficulty === "HARD") spawnChance = 0.4;
 

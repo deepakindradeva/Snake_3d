@@ -3,7 +3,6 @@ import React, { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment } from "@react-three/drei";
 
-// Game Components
 import CameraController from "./CameraController";
 import Arena from "./Arena";
 import Snake3D from "../Snake/Snake3D";
@@ -11,10 +10,9 @@ import Food3D from "../Food/Food3D";
 import Obstacles3D from "../Obstacle/Obstacles3D";
 import FoodEffects from "../Effects/FoodEffects";
 
-// --- INTERNAL COMPONENT: SYNCED GAME LOOP ---
+// --- GAME LOOP ---
 const GameLoop = ({ moveSnake, speed, isPaused, gameOver }) => {
   const accumulator = useRef(0);
-
   useFrame((state, delta) => {
     if (isPaused || gameOver) return;
     accumulator.current += delta * 1000;
@@ -23,11 +21,10 @@ const GameLoop = ({ moveSnake, speed, isPaused, gameOver }) => {
       accumulator.current -= speed;
     }
   });
-
   return null;
 };
 
-// --- MAIN SCENE COMPONENT ---
+// --- MAIN SCENE ---
 const GameScene = ({
   snake,
   foods,
@@ -64,7 +61,6 @@ const GameScene = ({
           console.log("Context lost! Attempting restore...");
         });
       }}>
-      {/* 1. THE GAME LOOP */}
       <GameLoop
         moveSnake={moveSnake}
         speed={speed}
@@ -72,10 +68,8 @@ const GameScene = ({
         gameOver={gameOver}
       />
 
-      {/* 2. CAMERA */}
       <CameraController snakeHead={snake[0]} dir={dir} mode={cameraMode} />
 
-      {/* 3. LIGHTING & ENV */}
       <color attach="background" args={["#80DEEA"]} />
       <fog attach="fog" args={["#80DEEA", 12, 40]} />
 
@@ -88,10 +82,8 @@ const GameScene = ({
       />
       <Environment preset="park" />
 
-      {/* 4. WORLD OBJECTS */}
+      {/* REVERTED: Just pass width/height. No snakeHead prop. */}
       <Arena width={cols} height={rows} />
-
-      {/* REMOVED: PathGuides (The lines are gone) */}
 
       <Snake3D
         snake={snake}
@@ -100,17 +92,14 @@ const GameScene = ({
         isMagnet={isMagnet}
       />
 
-      {/* Render Multiple Foods */}
       {foods.map((foodItem) => (
         <Food3D key={foodItem.id} position={foodItem} type={foodItem.type} />
       ))}
 
-      {/* Particle Effects */}
       <FoodEffects effects={effects} removeEffect={removeEffect} />
 
       <Obstacles3D obstacles={obstacles} />
 
-      {/* Shadows on the floor */}
       <ContactShadows
         resolution={512}
         scale={50}

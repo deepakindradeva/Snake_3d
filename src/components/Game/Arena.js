@@ -9,7 +9,7 @@ const Arena = ({ width, height }) => {
     canvas.height = 2;
     const context = canvas.getContext("2d");
 
-    // Checkerboard Pattern
+    // Classic Checkerboard Green
     context.fillStyle = "#66BB6A"; // Light Green
     context.fillRect(0, 0, 1, 1);
     context.fillRect(1, 1, 1, 1);
@@ -19,12 +19,10 @@ const Arena = ({ width, height }) => {
     context.fillRect(1, 0, 1, 1);
 
     const tex = new THREE.CanvasTexture(canvas);
-    tex.magFilter = THREE.NearestFilter; // Keeps edges sharp (pixel art style)
+    tex.magFilter = THREE.NearestFilter; // Sharp pixels
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(width / 2, height / 2);
-
-    // Ensure colors look correct
     tex.colorSpace = THREE.SRGBColorSpace;
 
     return tex;
@@ -32,9 +30,10 @@ const Arena = ({ width, height }) => {
 
   return (
     <group position={[width / 2 - 0.5, -0.5, height / 2 - 0.5]}>
+      {/* Static Plane - No movement logic */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[width, height]} />
-        <meshStandardMaterial map={texture} roughness={0.8} metalness={0.1} />
+        <meshStandardMaterial map={texture} roughness={0.8} />
       </mesh>
     </group>
   );

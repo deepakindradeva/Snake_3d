@@ -43,7 +43,7 @@ const useWorld = (cols, rows, difficulty) => {
     (snakeHead) => {
       let obsCount = 20;
       if (difficulty === "EASY") obsCount = 10;
-      if (difficulty === "HARD") obsCount = 50;
+      if (difficulty === "HARD") obsCount = 100;
 
       const initialObs = [];
       for (let i = 0; i < obsCount; i++) {

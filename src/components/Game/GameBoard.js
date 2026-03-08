@@ -10,14 +10,12 @@ import GameScene from "./GameScene";
 
 import "./GameBoard.css";
 
-// RECEIVE DIFFICULTY PROP
 const GameBoard = ({ onGameEnd, difficulty }) => {
   const COLS = 60;
   const ROWS = 60;
 
   const [cameraMode, setCameraMode] = useState("FOLLOW");
 
-  // PASS DIFFICULTY TO HOOK
   const {
     snake,
     foods,
@@ -27,6 +25,7 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
     gameOver,
     score,
     distance,
+    lives, // <--- NEW PROP
     speed,
     moveSnake,
     resetGame,
@@ -67,6 +66,7 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
       <GameHUD
         score={score}
         distance={distance}
+        lives={lives} // <--- PASS LIVES TO HUD
         isPaused={isPaused}
         onTogglePause={togglePause}
         onExit={handleExit}
@@ -96,7 +96,7 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
             animation: "pulse 0.5s infinite",
             pointerEvents: "none",
           }}>
-          🛡️ IMMUNITY ACTIVE 🛡️
+          {lives < 3 ? "⚠️ RECOVERING..." : "🛡️ IMMUNITY ACTIVE 🛡️"}
         </div>
       )}
 

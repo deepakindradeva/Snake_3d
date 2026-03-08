@@ -1,5 +1,5 @@
 // src/hooks/useSnakeGame.js
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import useSnake from "./useSnake";
 import useWorld from "./useWorld";
 import { FRUIT_TYPES } from "../utils/gameUtils";
@@ -9,8 +9,10 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [lives, setLives] = useState(3);
 
-  // LINTER FIX: Wrapped in useCallback for stable dependency
+  const damageCooldownRef = useRef(false);
+
   const getInitialSpeed = useCallback(() => {
     switch (difficulty) {
       case "HARD":
@@ -61,9 +63,10 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   const triggerEffect = (position, type) => {
     let color = "#FFF";
     if (type === "apple") color = "#D32F2F";
-    if (type === "banana") color = "#FFEB3B";
-    if (type === "ice") color = "#00E5FF";
-    if (type === "shield") color = "#2979FF";
+    if (type === "damage") color = "#FF0000";
+    else if (type === "banana") color = "#FFEB3B";
+    else if (type === "shield") color = "#2979FF";
+
     const newEffect = {
       id: Date.now() + Math.random(),
       x: position.x,
@@ -87,6 +90,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setGameOver(false);
     setScore(0);
     setDistance(0);
+    setLives(3);
     setSpeed(getInitialSpeed());
     setIsPaused(false);
     setEffects([]);
@@ -94,6 +98,8 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setIsInvincible(true);
     setHasShield(false);
     setIsMagnet(false);
+    damageCooldownRef.current = false;
+
     setTimeout(() => setIsInvincible(false), 5000);
   }, [cols, rows, resetSnake, resetWorld, getInitialSpeed]);
 
@@ -115,10 +121,9 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
       let nextX = head.x + dir.x;
       let nextY = head.y + dir.y;
 
-      // 1. ENDLESS WRAPPING LOGIC (Teleport at edges)
+      // 1. ENDLESS WRAPPING
       if (nextX < 0) nextX = cols - 1;
       else if (nextX >= cols) nextX = 0;
-
       if (nextY < 0) nextY = rows - 1;
       else if (nextY >= rows) nextY = 0;
 
@@ -128,8 +133,6 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
       // 2. COLLISION CHECK
       let isCrash = false;
-
-      // Check Obstacles ONLY
       for (let obs of obstaclesRef.current) {
         if (obs.x === newHead.x && obs.y === newHead.y) {
           isCrash = true;
@@ -137,25 +140,74 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         }
       }
 
-      // REMOVED: Self-Collision Loop
-      // The snake can now safely pass through its own body.
-
       if (isCrash) {
-        if (isInvincible) return prevSnake;
-        if (hasShield) {
-          playSound("shield_break");
-          setHasShield(false);
+        if (!isInvincible && !damageCooldownRef.current) {
+          damageCooldownRef.current = true;
+          setTimeout(() => {
+            damageCooldownRef.current = false;
+          }, 2000);
+
+          if (hasShield) {
+            playSound("shield_break");
+            setHasShield(false);
+            setIsInvincible(true);
+            setTimeout(() => setIsInvincible(false), 1500);
+            return [newHead, ...prevSnake];
+          }
+
+          triggerEffect(newHead, "damage");
+          playSound("crash");
+
+          // --- FIXED MATH FOR SHRINKING ---
+          if (prevSnake.length > 5) {
+            growthBankRef.current = 0; // Prevent instant healing
+
+            // We want to lose 3 segments NET.
+            // Since we are adding 1 head, we must remove 4 tail segments.
+            const damage = 3;
+            const headOffset = 1;
+            const itemsToKeep = prevSnake.length - (damage + headOffset);
+
+            // Ensure we don't go below min length (3)
+            const safeKeepCount = Math.max(2, itemsToKeep);
+
+            const shortenedBody = prevSnake.slice(0, safeKeepCount);
+
+            setIsInvincible(true);
+            setTimeout(() => setIsInvincible(false), 2000);
+
+            // Returns: [NewHead (1), ...Body (Length-4)] -> Total Length-3
+            return [newHead, ...shortenedBody];
+          }
+
+          // SCENARIO 2: Lose Life
+          if (lives > 1) {
+            setLives((l) => l - 1);
+
+            const startX = Math.floor(cols / 2);
+            const startY = Math.floor(rows / 2);
+            const respawnSnake = Array.from({ length: 5 }, (_, i) => ({
+              x: startX - i,
+              y: startY,
+            }));
+
+            setIsInvincible(true);
+            setTimeout(() => setIsInvincible(false), 3000);
+
+            return respawnSnake;
+          }
+
+          // SCENARIO 3: Game Over
+          setGameOver(true);
           return prevSnake;
         }
-        playSound("crash");
-        setGameOver(true);
-        return prevSnake;
       }
 
+      // 3. NORMAL MOVEMENT
       const newSnake = [newHead, ...prevSnake];
       setDistance((d) => d + 1);
 
-      // 3. EATING LOGIC
+      // 4. EATING LOGIC
       const eatRange = isMagnet ? 3 : 0;
       const eatenFood = foodsRef.current.find((f) => {
         const dist = Math.abs(newHead.x - f.x) + Math.abs(newHead.y - f.y);
@@ -216,6 +268,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     cols,
     rows,
     setSnake,
+    lives,
   ]);
 
   useEffect(() => {
@@ -242,6 +295,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     score,
     distance,
     speed,
+    lives,
     moveSnake,
     resetGame: initGame,
     dir,

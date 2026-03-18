@@ -1,0 +1,46 @@
+.event-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  animation: fadeInOut 1.5s ease-in-out forwards;
+}
+
+.event-content {
+  text-align: center;
+  text-shadow: 0 4px 8px rgba(0,0,0,0.8);
+  transform: scale(0.5);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.event-title {
+  font-size: 5rem;
+  margin: 0;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.event-description {
+  font-size: 2.5rem;
+  margin-top: 10px;
+  font-weight: 700;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; backdrop-filter: blur(0px); }
+  10% { opacity: 1; backdrop-filter: blur(4px); }
+  80% { opacity: 1; backdrop-filter: blur(4px); }
+  100% { opacity: 0; backdrop-filter: blur(0px); }
+}
+
+@keyframes popIn {
+  to { transform: scale(1); }
+}

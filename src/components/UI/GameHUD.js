@@ -1,11 +1,16 @@
 // src/components/UI/GameHUD.js
 import React from "react";
 
-const GameHUD = ({ score, distance, isPaused, onTogglePause, onExit }) => {
+const GameHUD = ({ score, distance, isPaused, onTogglePause, onExit, lives }) => {
   return (
     <>
       {/* --- LEFT: STATS PANEL --- */}
       <div className="hud-stats">
+        <div className="stat-row">
+          <span className="stat-icon">❤️</span>
+          <span className="stat-value">{lives}</span>
+        </div>
+        <div className="stat-divider"></div>
         <div className="stat-row">
           <span className="stat-icon">🏆</span>
           <span className="stat-value">{score}</span>

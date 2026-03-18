@@ -4,6 +4,7 @@ import useSnakeGame from "../../hooks/useSnakeGame";
 
 import GameHUD from "../UI/GameHUD";
 import GameOverlay from "../UI/GameOverlay";
+import EventOverlay from "../UI/EventOverlay";
 import Minimap from "../UI/Minimap";
 import MobileControls from "../UI/MobileControls";
 import GameScene from "./GameScene";
@@ -37,6 +38,8 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
     isInvincible,
     hasShield,
     isMagnet,
+    lives,
+    activeEvent,
   } = useSnakeGame(COLS, ROWS, difficulty);
 
   const handleExit = () => onGameEnd(score);
@@ -70,6 +73,7 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
         isPaused={isPaused}
         onTogglePause={togglePause}
         onExit={handleExit}
+        lives={lives}
       />
 
       <GameOverlay
@@ -80,6 +84,8 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
         onRestart={resetGame}
         onQuit={handleExit}
       />
+
+      <EventOverlay activeEvent={activeEvent} />
 
       {isInvincible && !gameOver && (
         <div

@@ -1,5 +1,5 @@
 // src/hooks/useSnakeGame.js
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import useSnake from "./useSnake";
 import useWorld from "./useWorld";
 import { FRUIT_TYPES } from "../utils/gameUtils";
@@ -9,6 +9,18 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
   const [distance, setDistance] = useState(0);
+
+  const [lives, setLives] = useState(3);
+  const [activeEvent, setActiveEvent] = useState(null);
+  const activeEventTimerRef = useRef(null);
+
+  const triggerEvent = useCallback((title, description, color) => {
+    setActiveEvent({ title, description, color });
+    if (activeEventTimerRef.current) clearTimeout(activeEventTimerRef.current);
+    activeEventTimerRef.current = setTimeout(() => {
+      setActiveEvent(null);
+    }, 1500);
+  }, []);
 
   // LINTER FIX: Wrapped in useCallback for stable dependency
   const getInitialSpeed = useCallback(() => {
@@ -77,25 +89,36 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setEffects((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
-  const initGame = useCallback(() => {
+  const respawn = useCallback(() => {
     const startX = Math.floor(cols / 2);
     const startY = Math.floor(rows / 2);
 
     resetSnake();
-    resetWorld({ x: startX, y: startY });
+    const initialSnake = Array.from({ length: 5 }, (_, i) => ({
+      x: startX - i,
+      y: startY,
+    }));
+    resetWorld(initialSnake);
 
-    setGameOver(false);
-    setScore(0);
-    setDistance(0);
     setSpeed(getInitialSpeed());
-    setIsPaused(false);
     setEffects([]);
 
     setIsInvincible(true);
     setHasShield(false);
     setIsMagnet(false);
-    setTimeout(() => setIsInvincible(false), 5000);
+    setTimeout(() => setIsInvincible(false), 3000);
   }, [cols, rows, resetSnake, resetWorld, getInitialSpeed]);
+
+  const initGame = useCallback(() => {
+    setGameOver(false);
+    setScore(0);
+    setDistance(0);
+    setLives(3);
+    setActiveEvent(null);
+    if (activeEventTimerRef.current) clearTimeout(activeEventTimerRef.current);
+    setIsPaused(false);
+    respawn();
+  }, [respawn]);
 
   useEffect(() => {
     if (snake.length === 0) initGame();
@@ -107,7 +130,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
   // --- MANUAL MOVE FUNCTION ---
   const moveSnake = useCallback(() => {
-    if (gameOver || isPaused) return;
+    if (gameOver || isPaused || activeEvent) return;
 
     setSnake((prevSnake) => {
       const head = prevSnake[0];
@@ -137,8 +160,13 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         }
       }
 
-      // REMOVED: Self-Collision Loop
-      // The snake can now safely pass through its own body.
+      // Self-Collision Check
+      for (let segment of prevSnake) {
+        if (segment.x === newHead.x && segment.y === newHead.y) {
+          isCrash = true;
+          break;
+        }
+      }
 
       if (isCrash) {
         if (isInvincible) return prevSnake;
@@ -147,6 +175,17 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
           setHasShield(false);
           return prevSnake;
         }
+
+        if (lives > 1) {
+          playSound("crash");
+          setLives((l) => l - 1);
+          triggerEvent("CRASHED!", "-1 Life", "#F44336");
+          setTimeout(() => {
+            respawn();
+          }, 1500);
+          return prevSnake;
+        }
+
         playSound("crash");
         setGameOver(true);
         return prevSnake;
@@ -191,7 +230,22 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
           setTimeout(() => setIsMagnet(false), 10000);
         }
 
-        removeAndRespawnFood(eatenFood.id, newHead);
+        removeAndRespawnFood(eatenFood.id, newSnake);
+
+        let colorStr = "#FFF";
+        if (eatenFood.type === "apple") colorStr = "#D32F2F";
+        else if (eatenFood.type === "banana") colorStr = "#FFEB3B";
+        else if (eatenFood.type === "cherry") colorStr = "#880E4F";
+        else if (eatenFood.type === "ice") colorStr = "#00E5FF";
+        else if (eatenFood.type === "star") colorStr = "#FFD700";
+        else if (eatenFood.type === "shield") colorStr = "#2979FF";
+        else if (eatenFood.type === "magnet") colorStr = "#FF1744";
+
+        triggerEvent(
+          `Ate ${eatenFood.type.toUpperCase()}`,
+          fruitStats.score > 0 ? `+${fruitStats.score} Score` : "Special Effect!",
+          colorStr
+        );
       } else {
         if (growthBankRef.current > 0) growthBankRef.current -= 1;
         else newSnake.pop();
@@ -216,6 +270,10 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     cols,
     rows,
     setSnake,
+    activeEvent,
+    lives,
+    triggerEvent,
+    respawn,
   ]);
 
   useEffect(() => {
@@ -251,6 +309,8 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     isInvincible,
     hasShield,
     isMagnet,
+    lives,
+    activeEvent,
   };
 };
 

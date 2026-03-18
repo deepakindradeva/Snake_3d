@@ -1,5 +1,5 @@
 // src/components/Effects/FoodEffects.js
-import React, { useRef, useMemo } from "react";
+import React, { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -25,6 +25,8 @@ const SingleEffect = ({ position, color, onComplete }) => {
       scale: 1,
     }));
   }, []);
+
+  const isDoneRef = useRef(false);
 
   useFrame((state, delta) => {
     if (!group.current) return;
@@ -54,18 +56,22 @@ const SingleEffect = ({ position, color, onComplete }) => {
     });
 
     // Remove effect when animation is done
-    if (allDone && onComplete) {
+    if (allDone && onComplete && !isDoneRef.current) {
+      isDoneRef.current = true;
       onComplete();
     }
   });
 
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color, transparent: true }), [color]);
+
+  useEffect(() => {
+    return () => mat.dispose();
+  }, [mat]);
+
   return (
     <group position={[position.x, 0.5, position.y]} ref={group}>
       {particles.map((_, i) => (
-        <mesh key={i} geometry={particleGeo} material={particleMat}>
-          {/* Tint the particles based on food type color */}
-          <meshBasicMaterial color={color} transparent />
-        </mesh>
+        <mesh key={i} geometry={particleGeo} material={mat} />
       ))}
     </group>
   );

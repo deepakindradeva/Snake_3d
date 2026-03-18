@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">snake-3d</string>
+    <string name="title_activity_main">snake-3d</string>
+    <string name="package_name">com.deepakindradeva.app</string>
+    <string name="custom_url_scheme">com.deepakindradeva.app</string>
+</resources>

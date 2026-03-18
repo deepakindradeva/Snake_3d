@@ -18,20 +18,37 @@ const useWorld = (cols, rows, difficulty) => {
 
   // FIX: Wrapped in useCallback to satisfy linter
   const createFood = useCallback(
-    (snakeHead, idOverride = null) => {
+    (snakeBody, idOverride = null) => {
       const nextType = getRandomFruit();
-      const range = 25;
-      const foodX = Math.min(
-        Math.max(2, snakeHead.x + (Math.random() * range * 2 - range)),
-        cols - 2,
-      );
-      const foodY = Math.min(
-        Math.max(2, snakeHead.y + (Math.random() * range * 2 - range)),
-        rows - 2,
-      );
+      let foodX, foodY;
+      let isOccupied = true;
+      let attempts = 0;
+
+      while (isOccupied && attempts < 100) {
+        foodX = Math.floor(1 + Math.random() * (cols - 2));
+        foodY = Math.floor(1 + Math.random() * (rows - 2));
+
+        isOccupied = false;
+        for (let obs of obstaclesRef.current) {
+          if (obs.x === foodX && obs.y === foodY) {
+            isOccupied = true;
+            break;
+          }
+        }
+        if (!isOccupied) {
+          for (let segment of snakeBody) {
+            if (segment.x === foodX && segment.y === foodY) {
+              isOccupied = true;
+              break;
+            }
+          }
+        }
+        attempts++;
+      }
+
       return {
-        x: Math.floor(foodX),
-        y: Math.floor(foodY),
+        x: foodX,
+        y: foodY,
         type: nextType,
         id: idOverride || Date.now() + Math.random(),
       };
@@ -40,18 +57,37 @@ const useWorld = (cols, rows, difficulty) => {
   );
 
   const resetWorld = useCallback(
-    (snakeHead) => {
-      let obsCount = 20;
-      if (difficulty === "EASY") obsCount = 10;
-      if (difficulty === "HARD") obsCount = 50;
+    (initialSnake) => {
+      let obsCount = 40;
+      if (difficulty === "EASY") obsCount = 20;
+      if (difficulty === "HARD") obsCount = 80;
 
       const initialObs = [];
+      const head = initialSnake[0];
+
       for (let i = 0; i < obsCount; i++) {
-        const pos = getRandomPos(cols, rows);
-        if (
-          Math.abs(pos.x - snakeHead.x) > 5 ||
-          Math.abs(pos.y - snakeHead.y) > 5
-        ) {
+        let pos;
+        let valid = false;
+        let attempts = 0;
+
+        while (!valid && attempts < 100) {
+          pos = getRandomPos(cols, rows);
+          valid = true;
+
+          if (Math.abs(pos.x - head.x) <= 5 && Math.abs(pos.y - head.y) <= 5) {
+            valid = false;
+          } else {
+            for (let existing of initialObs) {
+              if (existing.x === pos.x && existing.y === pos.y) {
+                valid = false;
+                break;
+              }
+            }
+          }
+          attempts++;
+        }
+
+        if (valid) {
           initialObs.push({
             ...pos,
             type: OBSTACLE_TYPES[
@@ -67,7 +103,7 @@ const useWorld = (cols, rows, difficulty) => {
 
       const initialFoods = [];
       for (let i = 0; i < MAX_FOOD_ITEMS; i++) {
-        initialFoods.push(createFood(snakeHead, `init-${i}`));
+        initialFoods.push(createFood(initialSnake, `init-${i}`));
       }
       setFoods(initialFoods);
       foodsRef.current = initialFoods;
@@ -76,11 +112,11 @@ const useWorld = (cols, rows, difficulty) => {
   ); // FIX: Added createFood to deps
 
   const removeAndRespawnFood = useCallback(
-    (eatenId, snakeHead) => {
+    (eatenId, snakeBody) => {
       setFoods((prevFoods) => {
-        const filtered = prevFoods.filter((f) => f.id !== eatenId);
-        const newFood = createFood(snakeHead);
-        const nextFoods = [...filtered, newFood];
+        const nextFoods = prevFoods.map((f) => 
+          f.id === eatenId ? createFood(snakeBody, eatenId) : f
+        );
         foodsRef.current = nextFoods;
         return nextFoods;
       });
@@ -90,51 +126,9 @@ const useWorld = (cols, rows, difficulty) => {
 
   const updateWorld = useCallback(
     (snakeHead, snakeDir) => {
-      let spawnChance = 0.2;
-      if (difficulty === "EASY") spawnChance = 0.1;
-      if (difficulty === "HARD") spawnChance = 0.4;
-
-      let currentObs = obstaclesRef.current.filter((o) => {
-        const dx = Math.abs(o.x - snakeHead.x);
-        const dy = Math.abs(o.y - snakeHead.y);
-        return dx < RENDER_DISTANCE && dy < RENDER_DISTANCE;
-      });
-
-      if (Math.random() < spawnChance) {
-        const spawnDist = 15 + Math.floor(Math.random() * 10);
-        const spawnX =
-          snakeHead.x +
-          snakeDir.x * spawnDist +
-          (Math.floor(Math.random() * 10) - 5);
-        const spawnY =
-          snakeHead.y +
-          snakeDir.y * spawnDist +
-          (Math.floor(Math.random() * 10) - 5);
-
-        if (spawnX > 0 && spawnX < cols && spawnY > 0 && spawnY < rows) {
-          const isStacking = currentObs.some(
-            (o) => o.x === spawnX && o.y === spawnY,
-          );
-          if (!isStacking) {
-            currentObs.push({
-              x: spawnX,
-              y: spawnY,
-              type: OBSTACLE_TYPES[
-                Math.floor(Math.random() * OBSTACLE_TYPES.length)
-              ],
-              id: Date.now(),
-              scale: 0.8 + Math.random() * 0.8,
-            });
-          }
-        }
-      }
-
-      if (currentObs.length !== obstaclesRef.current.length) {
-        setObstacles(currentObs);
-        obstaclesRef.current = currentObs;
-      }
+      // Obstacles are static on the wrapping map; no updates needed.
     },
-    [cols, rows, difficulty],
+    [],
   );
 
   return {

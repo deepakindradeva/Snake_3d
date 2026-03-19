@@ -6,7 +6,7 @@ import {
   getRandomPos,
 } from "../utils/gameUtils";
 
-const RENDER_DISTANCE = 25;
+
 const MAX_FOOD_ITEMS = 6;
 
 const useWorld = (cols, rows, difficulty) => {

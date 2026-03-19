@@ -3,12 +3,8 @@ import React, { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-// Re-usable geometry/material to save performance
+// Re-usable geometry to save performance
 const particleGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-const particleMat = new THREE.MeshBasicMaterial({
-  color: "#FFF",
-  transparent: true,
-});
 
 const SingleEffect = ({ position, color, onComplete }) => {
   const group = useRef();

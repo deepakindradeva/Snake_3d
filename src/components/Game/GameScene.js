@@ -1,5 +1,5 @@
 // src/components/Game/GameScene.js
-import React, { useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment } from "@react-three/drei";
 import * as THREE from "three";

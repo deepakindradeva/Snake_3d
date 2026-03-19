@@ -344,8 +344,10 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         if (eatenFood.type === "star") evtDesc = "INVINCIBLE! 5s Immunity!";
         else if (eatenFood.type === "shield") evtDesc = "SHIELD! Block 1 Crash!";
         else if (eatenFood.type === "magnet") evtDesc = "MAGNET! Pulls nearby food!";
-        else if (eatenFood.type === "ice") evtDesc += " (FROST: Slowed down)";
-        else if (eatenFood.type === "cherry") evtDesc += " (SHRINK: -3 Tail)";
+        else if (eatenFood.type === "ice") evtDesc += " (FROST: Slowed Down!)";
+        else if (eatenFood.type === "mushroom") evtDesc += " (SHRINK: -3 Tail!)";
+        else if (eatenFood.type === "banana") evtDesc += " (HASTE: Speed Up!)";
+        else if (eatenFood.type === "cherry") evtDesc += " (BIG BERRY +3 Tail!)";
 
         if (currentCombo > 1 && points > 0) evtDesc += ` (x${currentCombo} Combo!)`;
 

@@ -124,7 +124,7 @@ const GameScene = ({
         <CameraController snakeHead={snake[0]} dir={dir} />
 
         <DayNightCycle colors={themeColors} />
-        <fog attach="fog" args={[themeColors.day, 12, 40]} />
+        <fog attach="fog" args={[themeColors.day, 20, 50]} />
         <Environment preset={themeColors.env} />
 
         <Arena width={cols} height={rows} color1={themeColors.c1} color2={themeColors.c2} />

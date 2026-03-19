@@ -37,41 +37,45 @@ const Arena = ({ width, height, color1 = "#66BB6A", color2 = "#43A047" }) => {
       </mesh>
 
       {/* Atmospheric Cloud Boundaries */}
-      <Clouds material={THREE.MeshLambertMaterial} limit={400} renderOrder={2}>
+      <Clouds>
+        {/* Left Wall */}
         <Cloud 
-          position={[-width / 2 - 4, 1, 0]} 
-          bounds={[4, 6, height + 8]} 
-          segments={40} 
-          volume={width} 
-          color="#ECEFF1" 
-          opacity={0.8} 
+          position={[-width / 2 - 2, 10, 0]} 
+          bounds={[5, 20, height + 10]} 
+          segments={120} 
+          volume={width}
+          color="#FFFFFF" 
+          opacity={0.9} 
           speed={0.2} 
         />
+        {/* Right Wall */}
         <Cloud 
-          position={[width / 2 + 4, 1, 0]} 
-          bounds={[4, 6, height + 8]} 
-          segments={40} 
-          volume={width} 
-          color="#ECEFF1" 
-          opacity={0.8} 
+          position={[width / 2 + 2, 10, 0]} 
+          bounds={[5, 20, height + 10]} 
+          segments={120} 
+          volume={width}
+          color="#FFFFFF" 
+          opacity={0.9} 
           speed={0.2} 
         />
+        {/* Top Wall */}
         <Cloud 
-          position={[0, 1, -height / 2 - 4]} 
-          bounds={[width + 8, 6, 4]} 
-          segments={40} 
-          volume={height} 
-          color="#ECEFF1" 
-          opacity={0.8} 
+          position={[0, 10, -height / 2 - 2]} 
+          bounds={[width + 10, 20, 5]} 
+          segments={120} 
+          volume={height}
+          color="#FFFFFF" 
+          opacity={0.9} 
           speed={0.2} 
         />
+        {/* Bottom Wall */}
         <Cloud 
-          position={[0, 1, height / 2 + 4]} 
-          bounds={[width + 8, 6, 4]} 
-          segments={40} 
-          volume={height} 
-          color="#ECEFF1" 
-          opacity={0.8} 
+          position={[0, 10, height / 2 + 2]} 
+          bounds={[width + 10, 20, 5]} 
+          segments={120} 
+          volume={height}
+          color="#FFFFFF" 
+          opacity={0.9} 
           speed={0.2} 
         />
       </Clouds>

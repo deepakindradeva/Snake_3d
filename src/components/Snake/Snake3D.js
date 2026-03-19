@@ -1,10 +1,11 @@
 // src/components/Snake/Snake3D.js
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { TextureLoader } from "three";
+import { Trail } from "@react-three/drei";
 
-const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
+const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" }) => {
   const meshRef = useRef();
   const headRef = useRef();
   const tailRef = useRef();
@@ -27,6 +28,37 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
       normalMap.dispose();
     };
   }, [colorMap, normalMap]);
+
+  // MATERIAL CONFIG VIA SKIN
+  const skinProps = useMemo(() => {
+    if (skin === "neon") {
+      return {
+        color: "#00E5FF",
+        emissive: "#00E5FF",
+        emissiveIntensity: 0.8,
+        roughness: 0.1,
+        metalness: 0.9,
+        map: null,
+        normalMap: null,
+      };
+    }
+    if (skin === "robot") {
+      return {
+        color: "#9E9E9E",
+        roughness: 0.5,
+        metalness: 0.9,
+        map: null,
+        normalMap: null,
+      };
+    }
+    return {
+      color: "#81C784", 
+      map: colorMap,
+      normalMap: normalMap,
+      roughness: 0.4,
+      metalness: 0.1,
+    };
+  }, [skin, colorMap, normalMap]);
 
   // 3. VISUAL STATE
   const [visualPoints, setVisualPoints] = useState(
@@ -164,12 +196,8 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
       <mesh ref={meshRef} castShadow>
         <bufferGeometry />
         <meshStandardMaterial
-          map={colorMap}
-          normalMap={normalMap}
+          {...skinProps}
           normalScale={new THREE.Vector2(0.8, 0.8)}
-          roughness={0.4}
-          metalness={0.1}
-          color="#81C784" // <--- Reverted to Original Green
         />
       </mesh>
 
@@ -177,12 +205,7 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
       <group ref={headRef} scale={[0.65, 0.65, 0.65]}>
         <mesh>
           <sphereGeometry args={[0.44, 16, 16]} />
-          <meshStandardMaterial
-            map={colorMap}
-            normalMap={normalMap}
-            roughness={0.4}
-            color="#81C784" // <--- Reverted to Original Green
-          />
+          <meshStandardMaterial {...skinProps} />
         </mesh>
 
         {/* Shield Bubble */}
@@ -243,12 +266,20 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet }) => {
       {/* TAIL */}
       <mesh ref={tailRef} castShadow>
         <sphereGeometry args={[0.25, 16, 16]} />
-        <meshStandardMaterial
-          map={colorMap}
-          normalMap={normalMap}
-          roughness={0.4}
-          color="#81C784" // <--- Reverted to Original Green
-        />
+        <meshStandardMaterial {...skinProps} />
+        {skin === "neon" && (
+          <Trail
+            width={0.5}
+            color="#00E5FF"
+            length={10} 
+            decay={2}   
+          >
+            <mesh>
+               <sphereGeometry args={[0.1]} />
+               <meshBasicMaterial opacity={0} transparent />
+            </mesh>
+          </Trail>
+        )}
       </mesh>
     </group>
   );

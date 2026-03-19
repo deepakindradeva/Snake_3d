@@ -1,4 +1,5 @@
 // src/hooks/useSnakeGame.js
+// Triggering rebuild
 import { useState, useEffect, useCallback, useRef } from "react";
 import useSnake from "./useSnake";
 import useWorld from "./useWorld";
@@ -9,6 +10,14 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
   const [distance, setDistance] = useState(0);
+
+  const [level, setLevel] = useState(1);
+  const levelRef = useRef(1);
+
+  const [combo, setCombo] = useState(0);
+  const comboTimerRef = useRef(null);
+
+  const warpCooldownRef = useRef(0);
 
   const [lives, setLives] = useState(3);
   const [activeEvent, setActiveEvent] = useState(null);
@@ -59,9 +68,14 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     obstaclesRef,
     foods,
     foodsRef,
+    portals,
+    portalsRef,
+    enemies,
+    enemiesRef,
     resetWorld,
     updateWorld,
     removeAndRespawnFood,
+    destroyObstacle,
   } = useWorld(cols, rows, difficulty);
 
   const playSound = (type) => {
@@ -113,9 +127,13 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setGameOver(false);
     setScore(0);
     setDistance(0);
+    setLevel(1);
+    levelRef.current = 1;
     setLives(3);
+    setCombo(0);
     setActiveEvent(null);
     if (activeEventTimerRef.current) clearTimeout(activeEventTimerRef.current);
+    if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
     setIsPaused(false);
     respawn();
   }, [respawn]);
@@ -152,12 +170,28 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
       // 2. COLLISION CHECK
       let isCrash = false;
 
-      // Check Obstacles ONLY
       for (let obs of obstaclesRef.current) {
         if (obs.x === newHead.x && obs.y === newHead.y) {
-          isCrash = true;
+          if (isInvincible || hasShield) {
+            destroyObstacle(obs.id);
+            triggerEvent("SMASH!", "+50 Score", "#FF9800");
+            setScore(s => s + 50);
+            if (!isInvincible && hasShield) {
+                setHasShield(false);
+                playSound("shield_break");
+            }
+          } else {
+            isCrash = true;
+          }
           break;
         }
+      }
+
+      for (let enemy of enemiesRef.current) {
+          if (enemy.x === newHead.x && enemy.y === newHead.y) {
+              isCrash = true;
+              break;
+          }
       }
 
       // Self-Collision Check
@@ -179,6 +213,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         if (lives > 1) {
           playSound("crash");
           setLives((l) => l - 1);
+          setCombo(0);
           triggerEvent("CRASHED!", "-1 Life", "#F44336");
           setTimeout(() => {
             respawn();
@@ -189,6 +224,19 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         playSound("crash");
         setGameOver(true);
         return prevSnake;
+      }
+
+      if (warpCooldownRef.current > 0) warpCooldownRef.current--;
+      
+      let steppedPortal = portalsRef.current.find(p => p.x === newHead.x && p.y === newHead.y);
+      if (steppedPortal && warpCooldownRef.current === 0) {
+          const otherPortal = portalsRef.current.find(p => p.id !== steppedPortal.id);
+          if (otherPortal) {
+              newHead.x = otherPortal.x;
+              newHead.y = otherPortal.y;
+              warpCooldownRef.current = Math.max(2, prevSnake.length); 
+              triggerEvent("WARPED!", "Phase Shift", "#E040FB");
+          }
       }
 
       const newSnake = [newHead, ...prevSnake];
@@ -207,7 +255,24 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         const fruitStats =
           FRUIT_TYPES.find((f) => f.type === eatenFood.type) || FRUIT_TYPES[0];
 
-        setScore((s) => s + fruitStats.score);
+        setCombo((c) => c + 1);
+        if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+        comboTimerRef.current = setTimeout(() => setCombo(0), 4000); // 4 sec limit
+
+        const currentCombo = combo + 1; 
+        const points = fruitStats.score * currentCombo;
+        
+        setScore((s) => {
+            const newScore = s + points;
+            const targetLevel = Math.floor(newScore / 300) + 1;
+            if (targetLevel > levelRef.current) {
+                levelRef.current = targetLevel;
+                setLevel(targetLevel);
+                triggerEvent("LEVEL UP!", `Stage ${targetLevel}`, "#FFD700");
+                playSound("eat");
+            }
+            return newScore;
+        });
 
         const maxSpeed = difficulty === "HARD" ? 100 : 150;
         setSpeed((s) => Math.max(maxSpeed, s + fruitStats.speedMod));
@@ -241,9 +306,12 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         else if (eatenFood.type === "shield") colorStr = "#2979FF";
         else if (eatenFood.type === "magnet") colorStr = "#FF1744";
 
+        let evtDesc = points > 0 ? `+${points} Score` : "Special Effect!";
+        if (currentCombo > 1 && points > 0) evtDesc += ` (x${currentCombo} Combo!)`;
+
         triggerEvent(
           `Ate ${eatenFood.type.toUpperCase()}`,
-          fruitStats.score > 0 ? `+${fruitStats.score} Score` : "Special Effect!",
+          evtDesc,
           colorStr
         );
       } else {
@@ -261,6 +329,9 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     hasShield,
     isMagnet,
     obstaclesRef,
+    portalsRef,
+    enemiesRef,
+    destroyObstacle,
     foodsRef,
     growthBankRef,
     addGrowth,
@@ -272,6 +343,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setSnake,
     activeEvent,
     lives,
+    combo, // Pass combo to dependency array
     triggerEvent,
     respawn,
   ]);
@@ -294,6 +366,8 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     snake,
     foods,
     obstacles,
+    portals,
+    enemies,
     effects,
     removeEffect,
     gameOver,
@@ -310,6 +384,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     hasShield,
     isMagnet,
     lives,
+    level,
     activeEvent,
   };
 };

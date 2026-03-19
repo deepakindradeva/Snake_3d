@@ -12,7 +12,7 @@ import GameScene from "./GameScene";
 import "./GameBoard.css";
 
 // RECEIVE DIFFICULTY PROP
-const GameBoard = ({ onGameEnd, difficulty }) => {
+const GameBoard = ({ onGameEnd, difficulty, skin }) => {
   const COLS = 60;
   const ROWS = 60;
 
@@ -23,11 +23,14 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
     snake,
     foods,
     obstacles,
+    portals,
+    enemies,
     effects,
     removeEffect,
     gameOver,
     score,
     distance,
+    level,
     speed,
     moveSnake,
     resetGame,
@@ -116,6 +119,8 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
         snake={snake}
         foods={foods}
         obstacles={obstacles}
+        portals={portals}
+        enemies={enemies}
         effects={effects}
         removeEffect={removeEffect}
         dir={dir}
@@ -124,11 +129,14 @@ const GameBoard = ({ onGameEnd, difficulty }) => {
         isInvincible={isInvincible}
         hasShield={hasShield}
         isMagnet={isMagnet}
+        skin={skin}
         cameraMode={cameraMode}
         moveSnake={moveSnake}
         speed={speed}
         isPaused={isPaused}
         gameOver={gameOver}
+        activeEvent={activeEvent}
+        level={level}
       />
     </div>
   );

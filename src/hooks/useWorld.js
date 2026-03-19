@@ -16,6 +16,12 @@ const useWorld = (cols, rows, difficulty) => {
   const [foods, setFoods] = useState([]);
   const foodsRef = useRef([]);
 
+  const [portals, setPortals] = useState([]);
+  const portalsRef = useRef([]);
+
+  const [enemies, setEnemies] = useState([]);
+  const enemiesRef = useRef([]);
+
   // FIX: Wrapped in useCallback to satisfy linter
   const createFood = useCallback(
     (snakeBody, idOverride = null) => {
@@ -101,6 +107,23 @@ const useWorld = (cols, rows, difficulty) => {
       setObstacles(initialObs);
       obstaclesRef.current = initialObs;
 
+      const newPortals = [];
+      for (let i = 0; i < 2; i++) {
+        let pPos = getRandomPos(cols, rows);
+        newPortals.push({ ...pPos, id: `portal-${i}` });
+      }
+      setPortals(newPortals);
+      portalsRef.current = newPortals;
+
+      const initialEnemies = [];
+      const enemyCount = difficulty === "HARD" ? 3 : difficulty === "MEDIUM" ? 1 : 0;
+      for (let i = 0; i < enemyCount; i++) {
+        let pPos = getRandomPos(cols, rows);
+        initialEnemies.push({ ...pPos, id: `enemy-${i}` });
+      }
+      setEnemies(initialEnemies);
+      enemiesRef.current = initialEnemies;
+
       const initialFoods = [];
       for (let i = 0; i < MAX_FOOD_ITEMS; i++) {
         initialFoods.push(createFood(initialSnake, `init-${i}`));
@@ -124,11 +147,49 @@ const useWorld = (cols, rows, difficulty) => {
     [createFood],
   ); // FIX: Added createFood to deps
 
+  const destroyObstacle = useCallback((id) => {
+      setObstacles(prev => {
+          const next = prev.filter(o => o.id !== id);
+          obstaclesRef.current = next;
+          return next;
+      });
+  }, []);
+
+  const enemyTicksRef = useRef(0);
+
   const updateWorld = useCallback(
     (snakeHead, snakeDir) => {
-      // Obstacles are static on the wrapping map; no updates needed.
+      enemyTicksRef.current++;
+      if (enemyTicksRef.current >= 4) { 
+         enemyTicksRef.current = 0;
+         setEnemies(prev => {
+             const next = prev.map(e => {
+                 let dx = Math.sign(snakeHead.x - e.x);
+                 let dy = Math.sign(snakeHead.y - e.y);
+                 
+                 let nx = e.x;
+                 let ny = e.y;
+                 if (Math.random() > 0.5) nx += dx;
+                 else ny += dy;
+                 
+                 if (nx < 0) nx = cols - 1; else if (nx >= cols) nx = 0;
+                 if (ny < 0) ny = rows - 1; else if (ny >= rows) ny = 0;
+                 
+                 let blocked = false;
+                 for (let obs of obstaclesRef.current) {
+                     if (obs.x === nx && obs.y === ny) { blocked = true; break; }
+                 }
+                 if (!blocked) {
+                    return { ...e, x: nx, y: ny };
+                 }
+                 return e;
+             });
+             enemiesRef.current = next;
+             return next;
+         });
+      }
     },
-    [],
+    [cols, rows],
   );
 
   return {
@@ -136,9 +197,14 @@ const useWorld = (cols, rows, difficulty) => {
     obstaclesRef,
     foods,
     foodsRef,
+    portals,
+    portalsRef,
+    enemies,
+    enemiesRef,
     resetWorld,
     updateWorld,
     removeAndRespawnFood,
+    destroyObstacle,
   };
 };
 

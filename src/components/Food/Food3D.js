@@ -146,7 +146,7 @@ const Food3D = ({ position, type }) => {
       </mesh>
 
       {/* --- C. THE FOOD MODEL --- */}
-      <group ref={ref}>
+      <group ref={ref} scale={1.5}>
         {/* Basic Fruits */}
         {(!type || type === "apple") && <Apple />}
 

@@ -35,28 +35,24 @@ const MobileControls = ({ onTurnLeft, onTurnRight }) => {
     <div style={containerStyle}>
       {/* LEFT ZONE */}
       <div
+        className="mobile-touch-zone"
         style={touchZoneStyle}
         onPointerDown={(e) => {
           e.preventDefault();
           onTurnLeft();
         }}>
-        <span
-          style={{ ...arrowStyle, marginRight: "auto", paddingLeft: "40px" }}>
-          ⬅️
-        </span>
+        <div className="mobile-arrow left"></div>
       </div>
 
       {/* RIGHT ZONE */}
       <div
+        className="mobile-touch-zone"
         style={touchZoneStyle}
         onPointerDown={(e) => {
           e.preventDefault();
           onTurnRight();
         }}>
-        <span
-          style={{ ...arrowStyle, marginLeft: "auto", paddingRight: "40px" }}>
-          ➡️
-        </span>
+        <div className="mobile-arrow right"></div>
       </div>
     </div>
   );

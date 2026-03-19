@@ -8,10 +8,20 @@ import EventOverlay from "../UI/EventOverlay";
 import Minimap from "../UI/Minimap";
 import MobileControls from "../UI/MobileControls";
 import GameScene from "./GameScene";
+import { Loader } from "@react-three/drei";
 
 import "./GameBoard.css";
 
-// RECEIVE DIFFICULTY PROP
+/**
+ * GameBoard Component
+ * 
+ * Acts as the primary bridge between the logical React Hooks (`useSnakeGame`)
+ * and the physical React rendering layers (WebGL Canvas and HTML UI Overlays).
+ * 
+ * @param {function} onGameEnd - Callback triggered when the user explicitly quits.
+ * @param {string} difficulty - "EASY" | "MEDIUM" | "HARD"
+ * @param {string} skin - Texture variant for the snake
+ */
 const GameBoard = ({ onGameEnd, difficulty, skin }) => {
   const COLS = 60;
   const ROWS = 60;
@@ -137,6 +147,11 @@ const GameBoard = ({ onGameEnd, difficulty, skin }) => {
         gameOver={gameOver}
         activeEvent={activeEvent}
         level={level}
+      />
+      <Loader 
+        containerStyles={{ background: "#111" }} 
+        innerStyles={{ width: "300px" }}
+        barStyles={{ background: "#4CAF50" }} 
       />
     </div>
   );

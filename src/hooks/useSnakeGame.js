@@ -5,6 +5,20 @@ import useSnake from "./useSnake";
 import useWorld from "./useWorld";
 import { FRUIT_TYPES } from "../utils/gameUtils";
 
+/**
+ * Main Game Engine Hook
+ * 
+ * Orchestrates the entire state machine of the Snake game.
+ * Responsibilities include:
+ * - Managing Score, Lives, Speed, and Abilities (Shield, Magnet, Invincibility)
+ * - Computing collisions with World entities (Obstacles, Enemies, Portals, Food)
+ * - Handling the `moveSnake` progression loop tick
+ * - Emitting UI events for the Overlay
+ * 
+ * @param {number} cols - The width of the game board grid
+ * @param {number} rows - The height of the game board grid
+ * @param {string} difficulty - Difficulty preset affecting speed and enemies
+ */
 const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -147,6 +161,13 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   }, [gameOver]);
 
   // --- MANUAL MOVE FUNCTION ---
+  /**
+   * The core physical game tick function.
+   * Calculates the next position of the snake head and executes:
+   * 1. Map Wrapping bounds checking
+   * 2. Collision detection (Walls, Self, Enemies, Portals)
+   * 3. Consumable collection (Food, Power-ups)
+   */
   const moveSnake = useCallback(() => {
     if (gameOver || isPaused || activeEvent) return;
 
@@ -211,18 +232,29 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         }
 
         if (lives > 1) {
-          playSound("crash");
-          setLives((l) => l - 1);
-          setCombo(0);
-          triggerEvent("CRASHED!", "-1 Life", "#F44336");
-          setTimeout(() => {
-            respawn();
-          }, 1500);
+          const now = Date.now();
+          // Provide 1-second debounce to circumvent React StrictMode functional callback double-execution side-effects
+          if (!activeEventTimerRef.current || now - activeEventTimerRef.current > 1000) {
+            playSound("crash");
+            setLives((l) => l - 1);
+            setCombo(0);
+            triggerEvent("CRASHED!", "-1 Life", "#F44336");
+
+            // Grant invincibility AFTER the 1.5s activeEvent pause
+            setTimeout(() => {
+                setIsInvincible(true);
+                setTimeout(() => setIsInvincible(false), 3000);
+            }, 100);
+          }
           return prevSnake;
         }
 
-        playSound("crash");
-        setGameOver(true);
+        // Game Over Debounce
+        const now = Date.now();
+        if (!activeEventTimerRef.current || now - activeEventTimerRef.current > 1000) {
+            playSound("crash");
+            setGameOver(true);
+        }
         return prevSnake;
       }
 
@@ -307,6 +339,14 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         else if (eatenFood.type === "magnet") colorStr = "#FF1744";
 
         let evtDesc = points > 0 ? `+${points} Score` : "Special Effect!";
+        
+        // Explain specific powers contextually to the user natively on the UI popup
+        if (eatenFood.type === "star") evtDesc = "INVINCIBLE! 5s Immunity!";
+        else if (eatenFood.type === "shield") evtDesc = "SHIELD! Block 1 Crash!";
+        else if (eatenFood.type === "magnet") evtDesc = "MAGNET! Pulls nearby food!";
+        else if (eatenFood.type === "ice") evtDesc += " (FROST: Slowed down)";
+        else if (eatenFood.type === "cherry") evtDesc += " (SHRINK: -3 Tail)";
+
         if (currentCombo > 1 && points > 0) evtDesc += ` (x${currentCombo} Combo!)`;
 
         triggerEvent(

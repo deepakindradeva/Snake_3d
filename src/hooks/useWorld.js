@@ -6,9 +6,19 @@ import {
   getRandomPos,
 } from "../utils/gameUtils";
 
-
 const MAX_FOOD_ITEMS = 6;
 
+/**
+ * World Entity Manager Hook
+ * 
+ * Isolates and manages all non-player objects on the grid geometry mathematically.
+ * This includes generating collision-free obstacle mazes, managing food spawn pools,
+ * generating teleportation Portals, and stepping the Enemy AI loop natively.
+ * 
+ * @param {number} cols - Total grid width
+ * @param {number} rows - Total grid height
+ * @param {string} difficulty - Used to scale obstacle density and enemy counts
+ */
 const useWorld = (cols, rows, difficulty) => {
   const [obstacles, setObstacles] = useState([]);
   const obstaclesRef = useRef([]);

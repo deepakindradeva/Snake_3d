@@ -8,39 +8,48 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
   animation: fadeInOut 1.5s ease-in-out forwards;
 }
 
 .event-content {
   text-align: center;
-  text-shadow: 0 4px 8px rgba(0,0,0,0.8);
+  /* Use currentColor to dynamically inherit the React prop color for the glow! */
+  text-shadow: 0 0 20px currentColor, 0 8px 16px rgba(0,0,0,0.9);
   transform: scale(0.5);
-  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4) forwards;
 }
 
 .event-title {
-  font-size: 5rem;
+  /* Scales automatically between 3rem (mobile) and 6rem (desktop) */
+  font-size: clamp(3rem, 10vw, 6rem);
   margin: 0;
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 4px;
+  line-height: 1.1;
+  font-style: italic; /* Arcade slant */
+  -webkit-text-stroke: 2px rgba(255,255,255,0.8);
 }
 
 .event-description {
-  font-size: 2.5rem;
-  margin-top: 10px;
-  font-weight: 700;
+  /* Scales automatically between 1.5rem and 3rem */
+  font-size: clamp(1.5rem, 5vw, 3rem);
+  margin-top: 5px;
+  font-weight: 800;
+  color: white; /* Force white text so the glow (currentColor) forms the outline */
+  -webkit-text-stroke: 1px currentColor;
 }
 
 @keyframes fadeInOut {
   0% { opacity: 0; backdrop-filter: blur(0px); }
-  10% { opacity: 1; backdrop-filter: blur(4px); }
-  80% { opacity: 1; backdrop-filter: blur(4px); }
+  15% { opacity: 1; backdrop-filter: blur(6px); }
+  85% { opacity: 1; backdrop-filter: blur(6px); }
   100% { opacity: 0; backdrop-filter: blur(0px); }
 }
 
 @keyframes popIn {
-  to { transform: scale(1); }
+  from { transform: scale(0.2) rotate(-10deg); }
+  to { transform: scale(1) rotate(0deg); }
 }

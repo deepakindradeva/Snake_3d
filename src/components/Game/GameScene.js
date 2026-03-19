@@ -1,8 +1,16 @@
 // src/components/Game/GameScene.js
-import React, { useRef } from "react";
+import React, { useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Environment } from "@react-three/drei";
+import { ContactShadows, Environment, Preload } from "@react-three/drei";
 import * as THREE from "three";
+
+/**
+ * WebGL 3D Rendering Context
+ * 
+ * The `GameScene` mounts the React Three Fiber `<Canvas>`. It accepts raw entity coordinates 
+ * from the game engine and maps them iteratively to 3D meshes (Snake3D, Food3D, etc).
+ * It also manages ambient styling such as the Day/Night cycle, shadows, and environment maps.
+ */
 
 import CameraController from "./CameraController";
 import Arena from "./Arena";
@@ -105,54 +113,57 @@ const GameScene = ({
         powerPreference: "default",
         preserveDrawingBuffer: false,
       }}>
-      <GameLoop
-        moveSnake={moveSnake}
-        speed={speed}
-        isPaused={isPaused}
-        gameOver={gameOver}
-      />
+      <Suspense fallback={null}>
+        <GameLoop
+          moveSnake={moveSnake}
+          speed={speed}
+          isPaused={isPaused}
+          gameOver={gameOver}
+        />
 
-      <CameraController snakeHead={snake[0]} dir={dir} />
+        <CameraController snakeHead={snake[0]} dir={dir} />
 
-      <DayNightCycle colors={themeColors} />
-      <fog attach="fog" args={[themeColors.day, 12, 40]} />
-      <Environment preset={themeColors.env} />
+        <DayNightCycle colors={themeColors} />
+        <fog attach="fog" args={[themeColors.day, 12, 40]} />
+        <Environment preset={themeColors.env} />
 
-      {/* REVERTED: Just pass width/height. No snakeHead prop. */}
-      <Arena width={cols} height={rows} color1={themeColors.c1} color2={themeColors.c2} />
+        <Arena width={cols} height={rows} color1={themeColors.c1} color2={themeColors.c2} />
 
-      <Snake3D
-        snake={snake}
-        isInvincible={isInvincible}
-        hasShield={hasShield}
-        isMagnet={isMagnet}
-        skin={skin}
-      />
+        <Snake3D
+          snake={snake}
+          isInvincible={isInvincible}
+          hasShield={hasShield}
+          isMagnet={isMagnet}
+          skin={skin}
+        />
 
-      {foods.map((foodItem) => (
-        <Food3D key={foodItem.id} position={foodItem} type={foodItem.type} />
-      ))}
+        {foods.map((foodItem) => (
+          <Food3D key={foodItem.id} position={foodItem} type={foodItem.type} />
+        ))}
 
-      {portals && portals.map((p) => (
-        <Portal3D key={p.id} position={p} />
-      ))}
+        {portals && portals.map((p) => (
+          <Portal3D key={p.id} position={p} />
+        ))}
 
-      {enemies && enemies.map((e) => (
-        <Enemy3D key={e.id} position={e} />
-      ))}
+        {enemies && enemies.map((e) => (
+          <Enemy3D key={e.id} position={e} />
+        ))}
 
-      <FoodEffects effects={effects} removeEffect={removeEffect} />
+        <FoodEffects effects={effects} removeEffect={removeEffect} />
 
-      <Obstacles3D obstacles={obstacles} />
+        <Obstacles3D obstacles={obstacles} />
 
-      <ContactShadows
-        resolution={512}
-        scale={50}
-        blur={2}
-        opacity={0.4}
-        far={3}
-        color="#2E7D32"
-      />
+        <ContactShadows
+          resolution={512}
+          scale={50}
+          blur={2}
+          opacity={0.4}
+          far={3}
+          color="#2E7D32"
+        />
+        
+        <Preload all />
+      </Suspense>
     </Canvas>
   );
 };

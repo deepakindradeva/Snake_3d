@@ -24,8 +24,8 @@
   gap: 15px;
   border: 2px solid white;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  z-index: 100;
-  pointer-events: none; /* Let clicks pass through if needed */
+  z-index: 1000;
+  pointer-events: none;
 }
 
 .stat-row {
@@ -108,92 +108,151 @@
 }
 
 @keyframes pulseBtn {
-  0% {
-    transform: scale(1);
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* --- MOBILE TAPPABLE ARROWS --- */
+.mobile-arrow {
+  width: 40px;
+  height: 40px;
+  border-top: 8px solid rgba(255, 255, 255, 0.5);
+  border-right: 8px solid rgba(255, 255, 255, 0.5);
+  filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));
+  transition: all 0.2s;
+}
+
+.mobile-arrow.left {
+  transform: rotate(-135deg);
+  margin-right: auto;
+  margin-left: 10vw;
+}
+
+.mobile-arrow.right {
+  transform: rotate(45deg);
+  margin-left: auto;
+  margin-right: 10vw;
+}
+
+/* Active State for Touch Feedback */
+.mobile-touch-zone:active .mobile-arrow {
+  border-color: rgba(255, 255, 255, 0.9);
+  filter: drop-shadow(0 0 15px #FFD700);
+  transform: scale(1.2) rotate(-135deg); /* Overridden via JS optionally */
+}
+.mobile-touch-zone:active .mobile-arrow.right {
+  transform: scale(1.2) rotate(45deg);
+}
+
+/* --- RESPONSIVE MEDIA QUERIES --- */
+@media (max-width: 768px) {
+  .hud-stats {
+    top: 10px;
+    left: 10px;
+    padding: 6px 12px;
+    gap: 10px;
+    border-width: 1px;
+    transform: scale(0.85); /* Scales down the entire UI pill */
+    transform-origin: top left;
   }
-  50% {
-    transform: scale(1.05);
+  
+  .hud-controls {
+    top: 10px;
+    right: 10px;
+    gap: 8px;
+    transform: scale(0.85);
+    transform-origin: top right;
   }
-  100% {
-    transform: scale(1);
+
+  .mobile-arrow {
+    width: 30px;
+    height: 30px;
   }
 }
 
-/* --- GAME OVER OVERLAY --- */
+/* --- GAME OVER / PAUSE OVERLAY --- */
 .game-over-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(8px);
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.95) 100%);
+  backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  color: #37474f;
-  z-index: 200;
-  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  color: #FFF;
+  z-index: 2000;
+  animation: slideDownFade 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1);
 }
 
 .game-over-overlay h2 {
-  font-size: 3rem;
+  font-size: clamp(4rem, 12vw, 8rem);
   margin: 0;
-  color: #0277bd;
-  text-shadow: 0 2px 0px rgba(255, 255, 255, 0.8);
+  color: #FF1744; /* Aggressive Red */
+  text-transform: uppercase;
+  letter-spacing: 5px;
+  text-shadow: 0 0 30px #FF1744, 0 10px 20px rgba(0, 0, 0, 0.8);
+  font-style: italic;
 }
 
 .game-over-overlay p {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin: 10px 0 30px 0;
-  color: #546e7a;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-weight: 800;
+  margin: 10px 0 40px 0;
+  color: #FFD700; /* Gold score */
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
 
 /* --- OVERLAY BUTTONS --- */
 .overlay-btns {
   display: flex;
   gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .overlay-btns button {
   padding: 15px 40px;
-  font-size: 1.2rem;
-  border: none;
+  font-size: clamp(1rem, 4vw, 1.5rem);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 50px;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: 900;
   color: white;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
-  transition:
-    transform 0.1s,
-    box-shadow 0.1s,
-    filter 0.2s;
+  letter-spacing: 2px;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.4);
+  background: linear-gradient(to bottom, #424242, #212121);
+  transition: all 0.15s ease;
 }
 
 .overlay-btns button:active {
-  transform: translateY(4px);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+  transform: translateY(6px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
 }
 
 .overlay-btns button:first-child {
-  background: linear-gradient(to bottom, #66bb6a, #43a047);
+  background: linear-gradient(to bottom, #00E5FF, #00B0FF);
+  border-color: #84ffff;
+  color: #01579b;
 }
 
 .overlay-btns .danger-btn {
-  background: linear-gradient(to bottom, #ff5252, #d32f2f);
+  background: linear-gradient(to bottom, #FF1744, #D50000);
+  border-color: #ff8a80;
 }
 
-@keyframes popIn {
+@keyframes slideDownFade {
   from {
     opacity: 0;
-    transform: scale(0.8);
+    transform: translateY(-50px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
 }

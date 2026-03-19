@@ -2,6 +2,14 @@
 import { useState, useCallback, useRef } from "react";
 import { DIRECTIONS } from "../utils/gameUtils";
 
+/**
+ * Snake Kinematics & Body State Hook
+ * 
+ * Purely responsible for holding the physical coordinate array of the
+ * snake body segments and managing turning vectors securely.
+ * Abstracted away from the main game loop to isolate complex
+ * tail-following logic.
+ */
 const useSnake = (cols, rows) => {
   const [snake, setSnake] = useState([]);
   const [dir, setDir] = useState(DIRECTIONS.RIGHT);

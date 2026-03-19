@@ -2,8 +2,8 @@
 import React from "react";
 
 const Minimap = ({ snake, foods, obstacles, size }) => {
-  // CONFIGURATION
-  const MAP_SIZE = 140;
+  const isMobile = window.innerWidth < 768;
+  const MAP_SIZE = isMobile ? 100 : 140;
   const ZOOM_RADIUS = 15; // The actual visible radius logic
 
   // Scale: How many pixels per game tile
@@ -64,17 +64,17 @@ const Minimap = ({ snake, foods, obstacles, size }) => {
     <div
       style={{
         position: "absolute",
-        top: "20px",
-        left: "20px",
+        bottom: "20px",  // Repositioned from Top to Bottom
+        right: "20px",   // Repositioned to Right side so it doesn't block Left thumb scrolling on mobile
         width: `${MAP_SIZE}px`,
         height: `${MAP_SIZE}px`,
         borderRadius: "50%",
-        backgroundColor: "rgba(255, 255, 255, 0.7)",
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
         backdropFilter: "blur(5px)",
-        border: "4px solid #fff",
-        boxShadow: "0 8px 32px rgba(0, 100, 200, 0.2)",
+        border: "3px solid rgba(255,255,255,0.3)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
         overflow: "hidden", // Keeps things circular
-        zIndex: 90,
+        zIndex: 50,
         transform: "rotate(180deg)",
       }}>
       {/* 1. OBSTACLES (Only nearby ones) */}

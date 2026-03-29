@@ -21,7 +21,17 @@ const Home = ({ highScore, lastScore, coins, leaderboard = [], unlockedSkins, eq
   const [activeTab, setActiveTab]     = useState("PLAY");
   const [selectedSkin, setSelectedSkin] = useState(equippedSkin);
 
-  const handleStart = () => onStartGame(difficulty, selectedSkin);
+  const handleStart = () => {
+    // Request fullscreen on mobile/touch devices for the best experience
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      const docEl = document.documentElement;
+      const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+      if (requestFS) {
+        try { requestFS.call(docEl).catch(() => {}); } catch (e) {}
+      }
+    }
+    onStartGame(difficulty, selectedSkin);
+  };
 
   const renderPlayTab = () => (
     <>

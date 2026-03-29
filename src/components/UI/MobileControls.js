@@ -37,20 +37,21 @@ const MobileControls = ({ onTurnLeft, onTurnRight }) => {
   return <MobileTapZones onTurnLeft={onTurnLeft} onTurnRight={onTurnRight} />;
 };
 
-/* ─── Mobile tap zones as a separate component to use hooks cleanly ─── */
 const MobileTapZones = ({ onTurnLeft, onTurnRight }) => {
   const [leftActive, setLeftActive] = useState(false);
   const [rightActive, setRightActive] = useState(false);
 
   const handleLeft = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (leftActive) return; // Debounce
     setLeftActive(true);
     onTurnLeft();
     setTimeout(() => setLeftActive(false), 150);
   };
 
   const handleRight = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (rightActive) return; // Debounce
     setRightActive(true);
     onTurnRight();
     setTimeout(() => setRightActive(false), 150);
@@ -63,6 +64,7 @@ const MobileTapZones = ({ onTurnLeft, onTurnRight }) => {
         style={mobileTouchZone}
         onPointerDown={handleLeft}
         onTouchStart={handleLeft}
+        onClick={handleLeft}
       >
         <div style={{
           ...mobileBtnStyle,
@@ -81,6 +83,7 @@ const MobileTapZones = ({ onTurnLeft, onTurnRight }) => {
         style={mobileTouchZone}
         onPointerDown={handleRight}
         onTouchStart={handleRight}
+        onClick={handleRight}
       >
         <div style={{
           ...mobileBtnStyle,
@@ -104,7 +107,7 @@ const TurnBtn = ({ onClick, label, hint, side }) => (
       ...desktopBtnBase,
       borderRadius: side === "left" ? "16px 8px 8px 16px" : "8px 16px 16px 8px",
     }}
-    onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+    onPointerDown={(e) => { e.preventDefault(); onClick(); }}
     title={`Turn ${side} (${hint})`}
   >
     <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>{label}</span>

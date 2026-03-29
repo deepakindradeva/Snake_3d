@@ -7,61 +7,37 @@ import GameOverlay from "../UI/GameOverlay";
 import EventOverlay from "../UI/EventOverlay";
 import Minimap from "../UI/Minimap";
 import MobileControls from "../UI/MobileControls";
+import FloatingScore from "../UI/FloatingScore";
+import AchievementToast from "../UI/AchievementToast";
 import GameScene from "./GameScene";
 import { Loader } from "@react-three/drei";
 
 import "./GameBoard.css";
 
-/**
- * GameBoard Component
- * 
- * Acts as the primary bridge between the logical React Hooks (`useSnakeGame`)
- * and the physical React rendering layers (WebGL Canvas and HTML UI Overlays).
- * 
- * @param {function} onGameEnd - Callback triggered when the user explicitly quits.
- * @param {string} difficulty - "EASY" | "MEDIUM" | "HARD"
- * @param {string} skin - Texture variant for the snake
- */
-const GameBoard = ({ onGameEnd, difficulty, skin }) => {
+const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
   const COLS = 60;
   const ROWS = 60;
 
   const [cameraMode, setCameraMode] = useState("FOLLOW");
 
-  // PASS DIFFICULTY TO HOOK
   const {
-    snake,
-    foods,
-    obstacles,
-    portals,
-    enemies,
-    effects,
-    removeEffect,
-    gameOver,
-    score,
-    distance,
-    level,
-    speed,
-    moveSnake,
-    resetGame,
-    dir,
-    setDir,
-    isPaused,
-    togglePause,
-    isInvincible,
-    hasShield,
-    isMagnet,
-    lives,
-    activeEvent,
+    snake, foods, obstacles, portals, enemies, effects, removeEffect,
+    gameOver, score, distance, level, speed, moveSnake, resetGame,
+    dir, setDir, isPaused, togglePause,
+    isInvincible, hasShield, isMagnet,
+    lives, combo, activeEvent,
+    floatingScores, removeFloatingScore,
+    runStats, isShaking,
+    newAchievement, clearNewAchievement,
   } = useSnakeGame(COLS, ROWS, difficulty);
 
   const handleExit = () => onGameEnd(score);
 
-  const handleTurnLeft = () => !isPaused && setDir({ x: dir.y, y: -dir.x });
+  const handleTurnLeft  = () => !isPaused && setDir({ x: dir.y, y: -dir.x });
   const handleTurnRight = () => !isPaused && setDir({ x: -dir.y, y: dir.x });
 
   const cycleCamera = () => {
-    setCameraMode((prev) => {
+    setCameraMode(prev => {
       if (prev === "FOLLOW") return "TOP";
       if (prev === "TOP") return "POV";
       return "FOLLOW";
@@ -69,89 +45,72 @@ const GameBoard = ({ onGameEnd, difficulty, skin }) => {
   };
 
   useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key.toLowerCase() === "c") {
-        cycleCamera();
-      }
-    };
+    const handleKey = (e) => { if (e.key.toLowerCase() === "c") cycleCamera(); };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
   return (
-    <div className="game-container">
+    <div className={`game-container ${isShaking ? "screen-shake" : ""}`}>
       <GameHUD
-        score={score}
-        distance={distance}
-        isPaused={isPaused}
-        onTogglePause={togglePause}
-        onExit={handleExit}
-        lives={lives}
+        score={score} distance={distance} level={level}
+        isPaused={isPaused} onTogglePause={togglePause} onExit={handleExit}
+        lives={lives} combo={combo}
+        isInvincible={isInvincible} hasShield={hasShield} isMagnet={isMagnet}
+        speed={speed}
       />
 
       <GameOverlay
-        isPaused={isPaused}
-        gameOver={gameOver}
-        score={score}
-        onResume={togglePause}
-        onRestart={resetGame}
-        onQuit={handleExit}
+        isPaused={isPaused} gameOver={gameOver}
+        score={score} highScore={highScore}
+        runStats={runStats}
+        onResume={togglePause} onRestart={resetGame} onQuit={handleExit}
       />
 
       <EventOverlay activeEvent={activeEvent} />
 
-      {isInvincible && !gameOver && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100px",
-            width: "100%",
-            textAlign: "center",
-            color: "#FFF",
-            fontSize: "24px",
-            fontWeight: "bold",
-            textShadow: "0 2px 4px rgba(0,0,0,0.5)",
-            zIndex: 80,
-            animation: "pulse 0.5s infinite",
-            pointerEvents: "none",
-          }}>
-          🛡️ IMMUNITY ACTIVE 🛡️
-        </div>
+      {/* Floating score pop-ups */}
+      {floatingScores.map(fs => (
+        <FloatingScore
+          key={fs.id} id={fs.id}
+          value={fs.value} label={fs.label}
+          color={fs.color} x={fs.x} y={fs.y}
+          onDone={removeFloatingScore}
+        />
+      ))}
+
+      {/* Achievement toast */}
+      <AchievementToast achievement={newAchievement} onDone={clearNewAchievement} />
+
+      <Minimap snake={snake} foods={foods} obstacles={obstacles} enemies={enemies} portals={portals} size={COLS} />
+      <MobileControls onTurnLeft={handleTurnLeft} onTurnRight={handleTurnRight} />
+
+      {/* Speed lines overlay */}
+      {speed < 200 && (
+        <div className="speed-lines" />
       )}
 
-      <Minimap snake={snake} foods={foods} obstacles={obstacles} size={COLS} />
-      <MobileControls
-        onTurnLeft={handleTurnLeft}
-        onTurnRight={handleTurnRight}
-      />
+      {/* Low-health vignette */}
+      {lives === 1 && !gameOver && (
+        <div className="danger-vignette" />
+      )}
 
       <GameScene
-        snake={snake}
-        foods={foods}
-        obstacles={obstacles}
-        portals={portals}
-        enemies={enemies}
-        effects={effects}
-        removeEffect={removeEffect}
-        dir={dir}
-        cols={COLS}
-        rows={ROWS}
-        isInvincible={isInvincible}
-        hasShield={hasShield}
-        isMagnet={isMagnet}
-        skin={skin}
-        cameraMode={cameraMode}
-        moveSnake={moveSnake}
-        speed={speed}
-        isPaused={isPaused}
-        gameOver={gameOver}
-        activeEvent={activeEvent}
-        level={level}
+        snake={snake} foods={foods} obstacles={obstacles}
+        portals={portals} enemies={enemies} effects={effects}
+        removeEffect={removeEffect} dir={dir}
+        cols={COLS} rows={ROWS}
+        isInvincible={isInvincible} hasShield={hasShield} isMagnet={isMagnet}
+        skin={skin} cameraMode={cameraMode}
+        moveSnake={moveSnake} speed={speed}
+        isPaused={isPaused} gameOver={gameOver}
+        activeEvent={activeEvent} level={level}
+        isShaking={isShaking}
       />
-      <Loader 
-        containerStyles={{ background: "#111" }} 
+      <Loader
+        containerStyles={{ background: "#111" }}
         innerStyles={{ width: "300px" }}
-        barStyles={{ background: "#4CAF50" }} 
+        barStyles={{ background: "#4CAF50" }}
       />
     </div>
   );

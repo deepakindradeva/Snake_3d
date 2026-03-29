@@ -4,13 +4,19 @@ import Home from "./components/Home/Home";
 import GameBoard from "./components/Game/GameBoard";
 import "./App.css";
 
+const MAX_LEADERBOARD = 5;
+
+const loadLeaderboard = () => {
+  try { return JSON.parse(localStorage.getItem("snake3d-leaderboard") || "[]"); }
+  catch { return []; }
+};
+
 const App = () => {
-  const [gameState, setGameState] = useState("HOME"); // HOME, PLAYING
+  const [gameState, setGameState] = useState("HOME");
   const [lastScore, setLastScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-
-  // NEW: Store selected difficulty
   const [difficulty, setDifficulty] = useState("MEDIUM");
+  const [leaderboard, setLeaderboard] = useState(loadLeaderboard);
 
   // META PROGRESSION
   const [coins, setCoins] = useState(0);
@@ -26,6 +32,7 @@ const App = () => {
     if (storedSkins) setUnlockedSkins(JSON.parse(storedSkins));
     const storedEquipped = localStorage.getItem("snake3d-equipped");
     if (storedEquipped) setEquippedSkin(storedEquipped);
+    setLeaderboard(loadLeaderboard());
   }, []);
 
   const startGame = (selectedDifficulty, selectedSkin) => {
@@ -37,23 +44,34 @@ const App = () => {
 
   const handlePurchase = (skinId, cost) => {
     if (coins >= cost && !unlockedSkins.includes(skinId)) {
-        const newCoins = coins - cost;
-        const newSkins = [...unlockedSkins, skinId];
-        setCoins(newCoins);
-        setUnlockedSkins(newSkins);
-        localStorage.setItem("snake3d-coins", newCoins);
-        localStorage.setItem("snake3d-skins", JSON.stringify(newSkins));
+      const newCoins = coins - cost;
+      const newSkins = [...unlockedSkins, skinId];
+      setCoins(newCoins);
+      setUnlockedSkins(newSkins);
+      localStorage.setItem("snake3d-coins", newCoins);
+      localStorage.setItem("snake3d-skins", JSON.stringify(newSkins));
     }
-  }
+  };
 
   const endGame = (score) => {
     setLastScore(score);
+
+    // Update high score
     if (score > highScore) {
       setHighScore(score);
       localStorage.setItem("snake3d-highscore", score);
     }
-    
-    const earnedCoins = score * 5; 
+
+    // Update leaderboard
+    const newEntry = { score, difficulty, date: new Date().toLocaleDateString() };
+    const newBoard = [...leaderboard, newEntry]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_LEADERBOARD);
+    setLeaderboard(newBoard);
+    localStorage.setItem("snake3d-leaderboard", JSON.stringify(newBoard));
+
+    // Earn coins
+    const earnedCoins = score * 5;
     if (earnedCoins > 0) {
       const newCoins = coins + earnedCoins;
       setCoins(newCoins);
@@ -70,6 +88,7 @@ const App = () => {
           highScore={highScore}
           lastScore={lastScore}
           coins={coins}
+          leaderboard={leaderboard}
           unlockedSkins={unlockedSkins}
           equippedSkin={equippedSkin}
           onStartGame={startGame}
@@ -78,8 +97,9 @@ const App = () => {
       )}
       {gameState === "PLAYING" && (
         <GameBoard
-          difficulty={difficulty} 
+          difficulty={difficulty}
           skin={equippedSkin}
+          highScore={highScore}
           onGameEnd={endGame}
         />
       )}

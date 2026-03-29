@@ -430,7 +430,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     obstaclesRef, portalsRef, enemiesRef, destroyObstacle, foodsRef,
     growthBankRef, addGrowth, updateWorld, removeAndRespawnFood,
     difficulty, cols, rows, setSnake, activeEvent, lives,
-    triggerEvent, respawn, play, addFloatingScore, triggerShake, checkAchievements,
+    triggerEvent, play, addFloatingScore, triggerShake, checkAchievements,
   ]);
 
   // ── Keyboard controls ──

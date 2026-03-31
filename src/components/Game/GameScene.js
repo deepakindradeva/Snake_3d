@@ -58,10 +58,10 @@ const DayNightCycle = ({ colors }) => {
 };
 
 // --- GAME LOOP ---
-const GameLoop = ({ moveSnake, speed, isPaused, gameOver }) => {
+const GameLoop = ({ moveSnake, speed, isPaused, gameOver, levelComplete }) => {
   const accumulator = useRef(0);
   useFrame((state, delta) => {
-    if (isPaused || gameOver) return;
+    if (isPaused || gameOver || levelComplete) return;
     accumulator.current += delta * 1000;
     if (accumulator.current >= speed) {
       moveSnake();
@@ -92,6 +92,7 @@ const GameScene = ({
   speed,
   isPaused,
   gameOver,
+  levelComplete,
   activeEvent,
   level = 1,
 }) => {
@@ -119,6 +120,7 @@ const GameScene = ({
           speed={speed}
           isPaused={isPaused}
           gameOver={gameOver}
+          levelComplete={levelComplete}
         />
 
         <CameraController snakeHead={snake[0]} dir={dir} />

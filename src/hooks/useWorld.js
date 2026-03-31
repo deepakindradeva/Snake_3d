@@ -5,6 +5,7 @@ import {
   getRandomFruit,
   getRandomPos,
 } from "../utils/gameUtils";
+import { getLevelConfig } from "../utils/constants";
 
 const MAX_FOOD_ITEMS = 6;
 
@@ -73,10 +74,9 @@ const useWorld = (cols, rows, difficulty) => {
   );
 
   const resetWorld = useCallback(
-    (initialSnake) => {
-      let obsCount = 40;
-      if (difficulty === "EASY") obsCount = 20;
-      if (difficulty === "HARD") obsCount = 80;
+    (initialSnake, level = 1) => {
+      const config = getLevelConfig(level, difficulty);
+      const obsCount = config.obstacles;
 
       const initialObs = [];
       const head = initialSnake[0];
@@ -126,7 +126,7 @@ const useWorld = (cols, rows, difficulty) => {
       portalsRef.current = newPortals;
 
       const initialEnemies = [];
-      const enemyCount = difficulty === "HARD" ? 3 : difficulty === "MEDIUM" ? 1 : 0;
+      const enemyCount = config.enemies;
       for (let i = 0; i < enemyCount; i++) {
         let pPos = getRandomPos(cols, rows);
         initialEnemies.push({ ...pPos, id: `enemy-${i}` });

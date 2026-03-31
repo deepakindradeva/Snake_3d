@@ -9,6 +9,7 @@ import Minimap from "../UI/Minimap";
 import MobileControls from "../UI/MobileControls";
 import FloatingScore from "../UI/FloatingScore";
 import AchievementToast from "../UI/AchievementToast";
+import LevelTransition from "../UI/LevelTransition";
 import GameScene from "./GameScene";
 import { Loader } from "@react-three/drei";
 
@@ -26,6 +27,7 @@ const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
     dir, setDir, isPaused, togglePause,
     isInvincible, hasShield, isMagnet,
     lives, combo, activeEvent,
+    levelComplete, advanceLevel,
     floatingScores, removeFloatingScore,
     runStats, isShaking,
     newAchievement, clearNewAchievement,
@@ -82,6 +84,16 @@ const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
       {/* Achievement toast */}
       <AchievementToast achievement={newAchievement} onDone={clearNewAchievement} />
 
+      {/* Level transition overlay */}
+      {levelComplete && !gameOver && (
+        <LevelTransition
+          level={level}
+          difficulty={difficulty}
+          snake={snake}
+          onContinue={advanceLevel}
+        />
+      )}
+
       <Minimap snake={snake} foods={foods} obstacles={obstacles} enemies={enemies} portals={portals} size={COLS} />
       <MobileControls onTurnLeft={handleTurnLeft} onTurnRight={handleTurnRight} />
 
@@ -104,6 +116,7 @@ const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
         skin={skin} cameraMode={cameraMode}
         moveSnake={moveSnake} speed={speed}
         isPaused={isPaused} gameOver={gameOver}
+        levelComplete={levelComplete}
         activeEvent={activeEvent} level={level}
         isShaking={isShaking}
       />

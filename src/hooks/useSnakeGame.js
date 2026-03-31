@@ -4,6 +4,7 @@ import useSnake from "./useSnake";
 import useWorld from "./useWorld";
 import useSounds from "./useSounds";
 import { FRUIT_TYPES } from "../utils/gameUtils";
+import { getLevelTarget, getLevelConfig } from "../utils/constants";
 
 // ─── Achievement Definitions ────────────────────────────────────────────────
 export const ACHIEVEMENTS = [
@@ -50,6 +51,9 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
   const [level, setLevel] = useState(1);
   const levelRef = useRef(1);
+
+  const [levelComplete, setLevelComplete] = useState(false);
+  const levelCompleteRef = useRef(false);
 
   const [combo, setCombo] = useState(0);
   const comboRef = useRef(0);
@@ -179,6 +183,8 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     setDistance(0);
     setLevel(1);
     levelRef.current = 1;
+    setLevelComplete(false);
+    levelCompleteRef.current = false;
     setLives(3);
     setCombo(0);
     comboRef.current = 0;
@@ -222,9 +228,29 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     if (!gameOver) setIsPaused(p => !p);
   }, [gameOver]);
 
+  // ─── LEVEL ADVANCE ────────────────────────────────────────────────────────
+  const advanceLevel = useCallback((currentSnake) => {
+    const nextLevel = levelRef.current + 1;
+    levelRef.current = nextLevel;
+    setLevel(nextLevel);
+    runStatsRef.current.maxLevel = nextLevel;
+
+    const config = getLevelConfig(nextLevel, difficulty);
+    setSpeed(config.speed);
+
+    resetWorld(currentSnake, nextLevel);
+
+    levelCompleteRef.current = false;
+    setLevelComplete(false);
+
+    // Brief invincibility so the snake doesn't die instantly into new obstacles
+    setIsInvincible(true);
+    setTimeout(() => setIsInvincible(false), 2000);
+  }, [difficulty, resetWorld]);
+
   // ─── CORE MOVE FUNCTION ────────────────────────────────────────────────────
   const moveSnake = useCallback(() => {
-    if (gameOver || isPaused || activeEvent) return;
+    if (gameOver || isPaused || activeEvent || levelCompleteRef.current) return;
 
     setSnake(prevSnake => {
       const head = prevSnake[0];
@@ -370,12 +396,9 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         setScore(s => {
           const newScore = s + points;
           runStatsRef.current.score = newScore;
-          const targetLevel = Math.floor(newScore / 300) + 1;
-          if (targetLevel > levelRef.current) {
-            levelRef.current = targetLevel;
-            setLevel(targetLevel);
-            runStatsRef.current.maxLevel = targetLevel;
-            triggerEvent("LEVEL UP!", `Stage ${targetLevel}`, "#FFD700");
+          if (!levelCompleteRef.current && newScore >= getLevelTarget(levelRef.current)) {
+            levelCompleteRef.current = true;
+            setLevelComplete(true);
             play("level_up");
             checkAchievements(runStatsRef.current);
           }
@@ -459,6 +482,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     dir, setDir, isPaused, togglePause,
     isInvincible, hasShield, isMagnet,
     lives, level, combo,
+    levelComplete, advanceLevel,
     activeEvent,
     floatingScores, removeFloatingScore,
     runStats,

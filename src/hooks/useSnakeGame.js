@@ -3,8 +3,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import useSnake from "./useSnake";
 import useWorld from "./useWorld";
 import useSounds from "./useSounds";
-import { FRUIT_TYPES } from "../utils/gameUtils";
+import { ALL_FRUIT_TYPES, FRUIT_TYPES } from "../utils/gameUtils";
 import { getLevelTarget, getLevelConfig } from "../utils/constants";
+import { DEFAULT_CHARACTER } from "../utils/characters";
 
 // ─── Achievement Definitions ────────────────────────────────────────────────
 export const ACHIEVEMENTS = [
@@ -23,9 +24,8 @@ export const ACHIEVEMENTS = [
 ];
 
 const loadGlobalStats = () => {
-  try {
-    return JSON.parse(localStorage.getItem("snake3d-global-stats") || "{}");
-  } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem("snake3d-global-stats") || "{}"); }
+  catch { return {}; }
 };
 
 const saveGlobalStats = (s) => {
@@ -33,9 +33,8 @@ const saveGlobalStats = (s) => {
 };
 
 const loadUnlocked = () => {
-  try {
-    return JSON.parse(localStorage.getItem("snake3d-achievements") || "[]");
-  } catch { return []; }
+  try { return JSON.parse(localStorage.getItem("snake3d-achievements") || "[]"); }
+  catch { return []; }
 };
 
 const saveUnlocked = (arr) => {
@@ -43,7 +42,7 @@ const saveUnlocked = (arr) => {
 };
 
 // ─── Main Game Engine Hook ──────────────────────────────────────────────────
-const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
+const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHARACTER) => {
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
@@ -61,7 +60,8 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
   const warpCooldownRef = useRef(0);
 
-  const [lives, setLives] = useState(3);
+  const startLives = character?.stats?.startLives ?? 3;
+  const [lives, setLives] = useState(startLives);
   const [activeEvent, setActiveEvent] = useState(null);
   const activeEventTimerRef = useRef(null);
 
@@ -115,12 +115,10 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
   // ── Speed ──
   const getInitialSpeed = useCallback(() => {
-    switch (difficulty) {
-      case "HARD":  return 150;
-      case "EASY":  return 350;
-      default:       return 250;
-    }
-  }, [difficulty]);
+    const base = difficulty === "HARD" ? 150 : difficulty === "EASY" ? 350 : 250;
+    const bonus = character?.stats?.speedBonus ?? 0;
+    return base + bonus;
+  }, [difficulty, character]);
 
   const [speed, setSpeed] = useState(getInitialSpeed());
 
@@ -144,10 +142,14 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
   const triggerEffect = (position, type) => {
     let color = "#FFF";
-    if (type === "apple")   color = "#D32F2F";
-    if (type === "banana")  color = "#FFEB3B";
-    if (type === "ice")     color = "#00E5FF";
-    if (type === "shield")  color = "#2979FF";
+    if (type === "apple" || type === "date" || type === "ember_fruit" || type === "sea_grape" || type === "snowberry")
+      color = "#D32F2F";
+    if (type === "banana" || type === "hot_cocoa" || type === "kelp")
+      color = "#FFEB3B";
+    if (type === "ice" || type === "icicle" || type === "mirage")
+      color = "#00E5FF";
+    if (type === "shield")
+      color = "#2979FF";
     setEffects(prev => [...prev, { id: Date.now() + Math.random(), x: position.x, y: position.y, color }]);
   };
 
@@ -185,7 +187,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     levelRef.current = 1;
     setLevelComplete(false);
     levelCompleteRef.current = false;
-    setLives(3);
+    setLives(startLives);
     setCombo(0);
     comboRef.current = 0;
     setActiveEvent(null);
@@ -202,7 +204,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     };
     startTimeRef.current = Date.now();
     respawn();
-  }, [respawn, difficulty]);
+  }, [respawn, difficulty, startLives]);
 
   useEffect(() => {
     if (snake.length === 0) initGame();
@@ -216,7 +218,6 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
       runStatsRef.current.timeSurvived = elapsed;
       setRunStats({ ...stats });
       play("game_over");
-      // Update global stats
       const g = loadGlobalStats();
       g.totalFruitsAllTime = (g.totalFruitsAllTime || 0) + stats.totalEaten;
       saveGlobalStats(g);
@@ -236,21 +237,29 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     runStatsRef.current.maxLevel = nextLevel;
 
     const config = getLevelConfig(nextLevel, difficulty);
-    setSpeed(config.speed);
+    const bonus = character?.stats?.speedBonus ?? 0;
+    setSpeed(config.speed + bonus);
 
     resetWorld(currentSnake, nextLevel);
 
     levelCompleteRef.current = false;
     setLevelComplete(false);
 
-    // Brief invincibility so the snake doesn't die instantly into new obstacles
     setIsInvincible(true);
     setTimeout(() => setIsInvincible(false), 2000);
-  }, [difficulty, resetWorld]);
+  }, [difficulty, resetWorld, character]);
 
   // ─── CORE MOVE FUNCTION ────────────────────────────────────────────────────
   const moveSnake = useCallback(() => {
     if (gameOver || isPaused || activeEvent || levelCompleteRef.current) return;
+
+    // Character passive helpers
+    const passiveId = character?.passive?.id;
+    const smashBonus = passiveId === "smash_bonus" ? 100 : 50;
+    const comboWindow = passiveId === "longer_combo" ? 5000 : 4000;
+    const growthMult = character?.stats?.growthMult ?? 1.0;
+    const iceResist = passiveId === "ice_resist";
+    const portalRush = passiveId === "portal_rush";
 
     setSnake(prevSnake => {
       const head = prevSnake[0];
@@ -271,9 +280,9 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         if (obs.x === newHead.x && obs.y === newHead.y) {
           if (isInvincible || hasShield) {
             destroyObstacle(obs.id);
-            triggerEvent("SMASH!", "+50 Score", "#FF9800");
-            addFloatingScore(50, "#FF9800", newHead.x, newHead.y);
-            setScore(s => s + 50);
+            triggerEvent("SMASH!", `+${smashBonus} Score`, "#FF9800");
+            addFloatingScore(smashBonus, "#FF9800", newHead.x, newHead.y);
+            setScore(s => s + smashBonus);
             if (!isInvincible && hasShield) {
               setHasShield(false);
               play("shield_break");
@@ -334,7 +343,8 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         if (otherPortal) {
           newHead.x = otherPortal.x;
           newHead.y = otherPortal.y;
-          warpCooldownRef.current = Math.max(2, prevSnake.length);
+          const baseCooldown = Math.max(2, prevSnake.length);
+          warpCooldownRef.current = portalRush ? Math.max(1, Math.floor(baseCooldown / 2)) : baseCooldown;
           triggerEvent("WARPED!", "Phase Shift", "#E040FB");
           play("portal");
           runStatsRef.current.portalsUsed++;
@@ -353,7 +363,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
       });
 
       if (eatenFood) {
-        const fruitStats = FRUIT_TYPES.find(f => f.type === eatenFood.type) || FRUIT_TYPES[0];
+        const fruitStats = ALL_FRUIT_TYPES.find(f => f.type === eatenFood.type) || FRUIT_TYPES[0];
 
         const newCombo = comboRef.current + 1;
         comboRef.current = newCombo;
@@ -362,11 +372,10 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
         comboTimerRef.current = setTimeout(() => {
           setCombo(0);
           comboRef.current = 0;
-        }, 4000);
+        }, comboWindow);
 
         const points = fruitStats.score * newCombo;
 
-        // Play sound with combo awareness
         if (fruitStats.effect) {
           play("power_up");
         } else {
@@ -374,22 +383,25 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
           if (newCombo >= 5 && newCombo % 2 === 1) play("combo", newCombo);
         }
 
-        // Floating score
         const color = {
           apple: "#ef5350", banana: "#FDD835", cherry: "#e91e63",
           ice: "#00E5FF", star: "#FFD700", shield: "#448AFF",
           magnet: "#FF5252", mushroom: "#FF7043",
+          date: "#FFCC80", cactus_fruit: "#9CCC65", mirage: "#80DEEA", scarab: "#8D6E63",
+          snowberry: "#E3F2FD", icicle: "#B3E5FC", aurora_shard: "#80D8FF", hot_cocoa: "#795548",
+          ember_fruit: "#FF7043", magma_crystal: "#FF1744", phoenix_feather: "#FF6D00", brimstone: "#4E342E",
+          sea_grape: "#9575CD", kelp: "#66BB6A", pearl: "#F5F5F5", sea_star: "#FFD740",
         }[eatenFood.type] || "#FFF";
 
         if (points > 0) addFloatingScore(points, color, eatenFood.x, eatenFood.y);
 
-        // Update run stats
         runStatsRef.current.totalEaten++;
         runStatsRef.current.fruitCounts[eatenFood.type] = (runStatsRef.current.fruitCounts[eatenFood.type] || 0) + 1;
         if (newCombo > runStatsRef.current.maxCombo) runStatsRef.current.maxCombo = newCombo;
-        if (eatenFood.type === "star")   runStatsRef.current.powerUpsUsed.star++;
+        if (eatenFood.type === "star" || eatenFood.type === "aurora_shard" || eatenFood.type === "phoenix_feather" || eatenFood.type === "sea_star")
+          runStatsRef.current.powerUpsUsed.star++;
         if (eatenFood.type === "shield") runStatsRef.current.powerUpsUsed.shield++;
-        if (eatenFood.type === "magnet") runStatsRef.current.powerUpsUsed.magnet++;
+        if (eatenFood.type === "magnet" || eatenFood.type === "scarab") runStatsRef.current.powerUpsUsed.magnet++;
 
         triggerEffect(eatenFood, eatenFood.type);
 
@@ -405,12 +417,21 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
           return newScore;
         });
 
-        const maxSpeed = difficulty === "HARD" ? 100 : 150;
-        setSpeed(s => Math.max(maxSpeed, s + fruitStats.speedMod));
+        // Apply ice_resist passive to freeze-type fruits
+        let effectiveSpeedMod = fruitStats.speedMod;
+        if (iceResist && fruitStats.speedMod > 0) {
+          effectiveSpeedMod = Math.floor(fruitStats.speedMod / 2);
+        }
 
-        if (fruitStats.grow > 0) addGrowth(fruitStats.grow - 1);
-        else if (fruitStats.grow < 0) {
-          const shrinkAmt = Math.abs(fruitStats.grow);
+        const maxSpeed = difficulty === "HARD" ? 100 : 150;
+        setSpeed(s => Math.max(maxSpeed, s + effectiveSpeedMod));
+
+        const rawGrow = fruitStats.grow;
+        const scaledGrow = rawGrow > 0 ? Math.max(1, Math.round(rawGrow * growthMult)) : rawGrow;
+
+        if (scaledGrow > 0) addGrowth(scaledGrow - 1);
+        else if (scaledGrow < 0) {
+          const shrinkAmt = Math.abs(scaledGrow);
           for (let i = 0; i < shrinkAmt; i++) if (newSnake.length > 3) newSnake.pop();
           newSnake.pop();
         }
@@ -427,19 +448,19 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
 
         removeAndRespawnFood(eatenFood.id, newSnake);
 
+        // Build event description with biome-aware names
+        const displayName = eatenFood.type.replace(/_/g, " ").toUpperCase();
         let evtDesc = points > 0 ? `+${points} Score` : "Special Effect!";
-        if (eatenFood.type === "star")     evtDesc = "INVINCIBLE! 5s Immunity!";
-        else if (eatenFood.type === "shield")  evtDesc = "SHIELD! Block 1 Crash!";
-        else if (eatenFood.type === "magnet")  evtDesc = "MAGNET! Pulls nearby food!";
-        else if (eatenFood.type === "ice")     evtDesc += " (FROST: Slowed!)";
-        else if (eatenFood.type === "mushroom") evtDesc += " (SHRINK: -3 Tail!)";
-        else if (eatenFood.type === "banana")  evtDesc += " (HASTE: Speed Up!)";
-        else if (eatenFood.type === "cherry")  evtDesc += " (BIG BERRY +3 Tail!)";
+        if (fruitStats.effect === "invincible")  evtDesc = "INVINCIBLE! 5s Immunity!";
+        else if (fruitStats.effect === "shield") evtDesc = "SHIELD! Block 1 Crash!";
+        else if (fruitStats.effect === "magnet") evtDesc = "MAGNET! Pulls nearby food!";
+        else if (fruitStats.speedMod > 0)        evtDesc += " (FROST: Slowed!)";
+        else if (fruitStats.grow < 0)            evtDesc += " (SHRINK: -Tail!)";
+        else if (fruitStats.speedMod < -15)      evtDesc += " (HASTE: Speed Up!)";
+        else if (fruitStats.grow >= 3)           evtDesc += " (+3 Tail!)";
         if (newCombo > 1 && points > 0) evtDesc += ` (x${newCombo} Combo!)`;
 
-        triggerEvent(`Ate ${eatenFood.type.toUpperCase()}`, evtDesc, color);
-
-        // Check eat-based achievements
+        triggerEvent(`${displayName}`, evtDesc, color);
         checkAchievements(runStatsRef.current);
       } else {
         if (growthBankRef.current > 0) growthBankRef.current -= 1;
@@ -454,6 +475,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
     growthBankRef, addGrowth, updateWorld, removeAndRespawnFood,
     difficulty, cols, rows, setSnake, activeEvent, lives,
     triggerEvent, play, addFloatingScore, triggerShake, checkAchievements,
+    character,
   ]);
 
   // ── Keyboard controls ──
@@ -479,7 +501,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM") => {
   return {
     snake, foods, obstacles, portals, enemies, effects, removeEffect,
     gameOver, score, distance, speed, moveSnake, resetGame: initGame,
-    dir, setDir, isPaused, togglePause,
+    dir, setDir, turnLeft, turnRight, isPaused, togglePause,
     isInvincible, hasShield, isMagnet,
     lives, level, combo,
     levelComplete, advanceLevel,

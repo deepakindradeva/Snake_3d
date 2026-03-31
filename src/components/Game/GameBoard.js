@@ -1,6 +1,7 @@
 // src/components/Game/GameBoard.js
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import useSnakeGame from "../../hooks/useSnakeGame";
+import { DEFAULT_CHARACTER } from "../../utils/characters";
 
 import GameHUD from "../UI/GameHUD";
 import GameOverlay from "../UI/GameOverlay";
@@ -15,7 +16,7 @@ import { Loader } from "@react-three/drei";
 
 import "./GameBoard.css";
 
-const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
+const GameBoard = ({ onGameEnd, difficulty, character = DEFAULT_CHARACTER, highScore = 0 }) => {
   const COLS = 60;
   const ROWS = 60;
 
@@ -24,24 +25,24 @@ const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
   const {
     snake, foods, obstacles, portals, enemies, effects, removeEffect,
     gameOver, score, distance, level, speed, moveSnake, resetGame,
-    dir, setDir, isPaused, togglePause,
+    dir, turnLeft, turnRight, isPaused, togglePause,
     isInvincible, hasShield, isMagnet,
     lives, combo, activeEvent,
     levelComplete, advanceLevel,
     floatingScores, removeFloatingScore,
     runStats, isShaking,
     newAchievement, clearNewAchievement,
-  } = useSnakeGame(COLS, ROWS, difficulty);
+  } = useSnakeGame(COLS, ROWS, difficulty, character);
 
   const handleExit = () => onGameEnd(score);
 
-  const handleTurnLeft  = () => !isPaused && setDir({ x: dir.y, y: -dir.x });
-  const handleTurnRight = () => !isPaused && setDir({ x: -dir.y, y: dir.x });
+  const handleTurnLeft  = () => { if (!isPaused) turnLeft(); };
+  const handleTurnRight = () => { if (!isPaused) turnRight(); };
 
   const cycleCamera = () => {
     setCameraMode(prev => {
       if (prev === "FOLLOW") return "TOP";
-      if (prev === "TOP") return "POV";
+      if (prev === "TOP")    return "POV";
       return "FOLLOW";
     });
   };
@@ -71,7 +72,6 @@ const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
 
       <EventOverlay activeEvent={activeEvent} />
 
-      {/* Floating score pop-ups */}
       {floatingScores.map(fs => (
         <FloatingScore
           key={fs.id} id={fs.id}
@@ -81,31 +81,26 @@ const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
         />
       ))}
 
-      {/* Achievement toast */}
       <AchievementToast achievement={newAchievement} onDone={clearNewAchievement} />
 
-      {/* Level transition overlay */}
       {levelComplete && !gameOver && (
         <LevelTransition
-          level={level}
-          difficulty={difficulty}
-          snake={snake}
-          onContinue={advanceLevel}
+          level={level} difficulty={difficulty}
+          snake={snake} onContinue={advanceLevel}
         />
       )}
 
       <Minimap snake={snake} foods={foods} obstacles={obstacles} enemies={enemies} portals={portals} size={COLS} />
-      <MobileControls onTurnLeft={handleTurnLeft} onTurnRight={handleTurnRight} />
 
-      {/* Speed lines overlay */}
-      {speed < 200 && (
-        <div className="speed-lines" />
-      )}
+      {/* Pass currentDir so swipe detector can compute correct relative turns */}
+      <MobileControls
+        onTurnLeft={handleTurnLeft}
+        onTurnRight={handleTurnRight}
+        currentDir={dir}
+      />
 
-      {/* Low-health vignette */}
-      {lives === 1 && !gameOver && (
-        <div className="danger-vignette" />
-      )}
+      {speed < 200 && <div className="speed-lines" />}
+      {lives === 1 && !gameOver && <div className="danger-vignette" />}
 
       <GameScene
         snake={snake} foods={foods} obstacles={obstacles}
@@ -113,13 +108,14 @@ const GameBoard = ({ onGameEnd, difficulty, skin, highScore = 0 }) => {
         removeEffect={removeEffect} dir={dir}
         cols={COLS} rows={ROWS}
         isInvincible={isInvincible} hasShield={hasShield} isMagnet={isMagnet}
-        skin={skin} cameraMode={cameraMode}
+        character={character} cameraMode={cameraMode}
         moveSnake={moveSnake} speed={speed}
         isPaused={isPaused} gameOver={gameOver}
         levelComplete={levelComplete}
         activeEvent={activeEvent} level={level}
         isShaking={isShaking}
       />
+
       <Loader
         containerStyles={{ background: "#111" }}
         innerStyles={{ width: "300px" }}

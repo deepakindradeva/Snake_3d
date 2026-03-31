@@ -1,0 +1,183 @@
+// src/utils/characters.js
+// Snake character definitions with unique personalities, stats, and visual configs.
+
+export const CHARACTERS = [
+  {
+    id: "sly",
+    name: "Sly",
+    title: "The Classic",
+    description: "Well-balanced and reliable. Perfect for any aspiring serpent.",
+    icon: "🐍",
+    skin: "default",
+    cost: 0,
+    stats: {
+      speedBonus: 0,      // ms added to base speed (negative = faster)
+      growthMult: 1.0,    // multiplier on fruitStats.grow
+      startLives: 3,
+    },
+    passive: {
+      id: "none",
+      label: "Balanced",
+      description: "No special ability — pure skill wins.",
+    },
+    visual: {
+      bodyColor: "#81C784",
+      emissive: "#000000",
+      emissiveIntensity: 0,
+      roughness: 0.4,
+      metalness: 0.1,
+      eyeColor: "#FFEB3B",
+      tongueColor: "#D50000",
+      trailColor: null,
+    },
+  },
+  {
+    id: "volt",
+    name: "Volt",
+    title: "Neon Rider",
+    description: "Blazing fast with electric energy. Combo streaks last 1 second longer.",
+    icon: "⚡",
+    skin: "neon",
+    cost: 200,
+    stats: {
+      speedBonus: -20,
+      growthMult: 1.0,
+      startLives: 3,
+    },
+    passive: {
+      id: "longer_combo",
+      label: "Live Wire",
+      description: "Combo timer lasts 5s instead of 4s.",
+    },
+    visual: {
+      bodyColor: "#00E5FF",
+      emissive: "#00E5FF",
+      emissiveIntensity: 0.8,
+      roughness: 0.1,
+      metalness: 0.9,
+      eyeColor: "#FF1744",
+      tongueColor: "#00BCD4",
+      trailColor: "#00E5FF",
+    },
+  },
+  {
+    id: "rex",
+    name: "Rex",
+    title: "Mecha Serpent",
+    description: "Heavy-armored destroyer. Smashing obstacles gives double points.",
+    icon: "🤖",
+    skin: "robot",
+    cost: 500,
+    stats: {
+      speedBonus: 0,
+      growthMult: 0.8,
+      startLives: 3,
+    },
+    passive: {
+      id: "smash_bonus",
+      label: "Titanium Crush",
+      description: "Smashing obstacles gives +100 pts instead of +50.",
+    },
+    visual: {
+      bodyColor: "#9E9E9E",
+      emissive: "#455A64",
+      emissiveIntensity: 0.1,
+      roughness: 0.5,
+      metalness: 0.9,
+      eyeColor: "#FF3D00",
+      tongueColor: "#607D8B",
+      trailColor: null,
+    },
+  },
+  {
+    id: "glacius",
+    name: "Glacius",
+    title: "Frost Drake",
+    description: "Ancient ice serpent. Starts with an extra life and resists freezing effects.",
+    icon: "❄️",
+    skin: "frost",
+    cost: 750,
+    stats: {
+      speedBonus: 25,
+      growthMult: 1.2,
+      startLives: 4,
+    },
+    passive: {
+      id: "ice_resist",
+      label: "Frozen Heart",
+      description: "Ice/freeze slow you half as much. Starts with 4 lives.",
+    },
+    visual: {
+      bodyColor: "#80DEEA",
+      emissive: "#00ACC1",
+      emissiveIntensity: 0.25,
+      roughness: 0.2,
+      metalness: 0.3,
+      eyeColor: "#E0F7FA",
+      tongueColor: "#00BCD4",
+      trailColor: "#B2EBF2",
+    },
+  },
+  {
+    id: "wraith",
+    name: "Wraith",
+    title: "Phantom Viper",
+    description: "Phase-shifting ghost snake. Portal warp cooldown is cut in half.",
+    icon: "👻",
+    skin: "phantom",
+    cost: 750,
+    stats: {
+      speedBonus: -10,
+      growthMult: 1.0,
+      startLives: 3,
+    },
+    passive: {
+      id: "portal_rush",
+      label: "Phase Shift",
+      description: "Portal warp cooldown is halved.",
+    },
+    visual: {
+      bodyColor: "#CE93D8",
+      emissive: "#9C27B0",
+      emissiveIntensity: 0.4,
+      roughness: 0.1,
+      metalness: 0.5,
+      eyeColor: "#EA80FC",
+      tongueColor: "#E040FB",
+      trailColor: "#9C27B0",
+    },
+  },
+  {
+    id: "goliath",
+    name: "Goliath",
+    title: "The Titan",
+    description: "Unstoppable mass. Grows twice as fast and starts with 4 lives.",
+    icon: "💪",
+    skin: "titan",
+    cost: 1000,
+    stats: {
+      speedBonus: 30,
+      growthMult: 2.0,
+      startLives: 4,
+    },
+    passive: {
+      id: "titan_growth",
+      label: "Unstoppable Mass",
+      description: "Grows 2x faster from every fruit. Starts with 4 lives.",
+    },
+    visual: {
+      bodyColor: "#FF8A65",
+      emissive: "#BF360C",
+      emissiveIntensity: 0.15,
+      roughness: 0.7,
+      metalness: 0.2,
+      eyeColor: "#FFCCBC",
+      tongueColor: "#FF5722",
+      trailColor: null,
+    },
+  },
+];
+
+export const CHARACTER_MAP = Object.fromEntries(CHARACTERS.map((c) => [c.id, c]));
+
+export const DEFAULT_CHARACTER = CHARACTERS[0];

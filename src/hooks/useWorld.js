@@ -1,25 +1,14 @@
 // src/hooks/useWorld.js
 import { useState, useCallback, useRef } from "react";
 import {
-  OBSTACLE_TYPES,
+  getBiomeObstacleTypes,
   getRandomFruit,
   getRandomPos,
 } from "../utils/gameUtils";
-import { getLevelConfig } from "../utils/constants";
+import { getLevelConfig, getBiome, BIOME_CONFIG } from "../utils/constants";
 
 const MAX_FOOD_ITEMS = 6;
 
-/**
- * World Entity Manager Hook
- * 
- * Isolates and manages all non-player objects on the grid geometry mathematically.
- * This includes generating collision-free obstacle mazes, managing food spawn pools,
- * generating teleportation Portals, and stepping the Enemy AI loop natively.
- * 
- * @param {number} cols - Total grid width
- * @param {number} rows - Total grid height
- * @param {string} difficulty - Used to scale obstacle density and enemy counts
- */
 const useWorld = (cols, rows, difficulty) => {
   const [obstacles, setObstacles] = useState([]);
   const obstaclesRef = useRef([]);
@@ -33,10 +22,12 @@ const useWorld = (cols, rows, difficulty) => {
   const [enemies, setEnemies] = useState([]);
   const enemiesRef = useRef([]);
 
-  // FIX: Wrapped in useCallback to satisfy linter
+  // Current biome ref so createFood can access it without re-creating
+  const biomeRef = useRef("forest");
+
   const createFood = useCallback(
     (snakeBody, idOverride = null) => {
-      const nextType = getRandomFruit();
+      const nextType = getRandomFruit(biomeRef.current);
       let foodX, foodY;
       let isOccupied = true;
       let attempts = 0;
@@ -47,17 +38,11 @@ const useWorld = (cols, rows, difficulty) => {
 
         isOccupied = false;
         for (let obs of obstaclesRef.current) {
-          if (obs.x === foodX && obs.y === foodY) {
-            isOccupied = true;
-            break;
-          }
+          if (obs.x === foodX && obs.y === foodY) { isOccupied = true; break; }
         }
         if (!isOccupied) {
           for (let segment of snakeBody) {
-            if (segment.x === foodX && segment.y === foodY) {
-              isOccupied = true;
-              break;
-            }
+            if (segment.x === foodX && segment.y === foodY) { isOccupied = true; break; }
           }
         }
         attempts++;
@@ -75,6 +60,13 @@ const useWorld = (cols, rows, difficulty) => {
 
   const resetWorld = useCallback(
     (initialSnake, level = 1) => {
+      const biome = getBiome(level);
+      biomeRef.current = biome;
+
+      const biomeConfig = BIOME_CONFIG[biome] || BIOME_CONFIG.forest;
+      const obstacleTypes = getBiomeObstacleTypes(biome);
+      const enemyType = biomeConfig.enemyType || "spider";
+
       const config = getLevelConfig(level, difficulty);
       const obsCount = config.obstacles;
 
@@ -89,15 +81,11 @@ const useWorld = (cols, rows, difficulty) => {
         while (!valid && attempts < 100) {
           pos = getRandomPos(cols, rows);
           valid = true;
-
           if (Math.abs(pos.x - head.x) <= 5 && Math.abs(pos.y - head.y) <= 5) {
             valid = false;
           } else {
             for (let existing of initialObs) {
-              if (existing.x === pos.x && existing.y === pos.y) {
-                valid = false;
-                break;
-              }
+              if (existing.x === pos.x && existing.y === pos.y) { valid = false; break; }
             }
           }
           attempts++;
@@ -106,9 +94,7 @@ const useWorld = (cols, rows, difficulty) => {
         if (valid) {
           initialObs.push({
             ...pos,
-            type: OBSTACLE_TYPES[
-              Math.floor(Math.random() * OBSTACLE_TYPES.length)
-            ],
+            type: obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)],
             id: Date.now() + i,
             scale: 0.8 + Math.random() * 0.8,
           });
@@ -129,7 +115,7 @@ const useWorld = (cols, rows, difficulty) => {
       const enemyCount = config.enemies;
       for (let i = 0; i < enemyCount; i++) {
         let pPos = getRandomPos(cols, rows);
-        initialEnemies.push({ ...pPos, id: `enemy-${i}` });
+        initialEnemies.push({ ...pPos, id: `enemy-${i}`, enemyType });
       }
       setEnemies(initialEnemies);
       enemiesRef.current = initialEnemies;
@@ -142,12 +128,12 @@ const useWorld = (cols, rows, difficulty) => {
       foodsRef.current = initialFoods;
     },
     [cols, rows, difficulty, createFood],
-  ); // FIX: Added createFood to deps
+  );
 
   const removeAndRespawnFood = useCallback(
     (eatenId, snakeBody) => {
       setFoods((prevFoods) => {
-        const nextFoods = prevFoods.map((f) => 
+        const nextFoods = prevFoods.map((f) =>
           f.id === eatenId ? createFood(snakeBody, eatenId) : f
         );
         foodsRef.current = nextFoods;
@@ -155,14 +141,14 @@ const useWorld = (cols, rows, difficulty) => {
       });
     },
     [createFood],
-  ); // FIX: Added createFood to deps
+  );
 
   const destroyObstacle = useCallback((id) => {
-      setObstacles(prev => {
-          const next = prev.filter(o => o.id !== id);
-          obstaclesRef.current = next;
-          return next;
-      });
+    setObstacles(prev => {
+      const next = prev.filter(o => o.id !== id);
+      obstaclesRef.current = next;
+      return next;
+    });
   }, []);
 
   const enemyTicksRef = useRef(0);
@@ -170,51 +156,43 @@ const useWorld = (cols, rows, difficulty) => {
   const updateWorld = useCallback(
     (snakeHead, snakeDir) => {
       enemyTicksRef.current++;
-      if (enemyTicksRef.current >= 4) { 
-         enemyTicksRef.current = 0;
-         setEnemies(prev => {
-             const next = prev.map(e => {
-                 let dx = Math.sign(snakeHead.x - e.x);
-                 let dy = Math.sign(snakeHead.y - e.y);
-                 
-                 let nx = e.x;
-                 let ny = e.y;
-                 if (Math.random() > 0.5) nx += dx;
-                 else ny += dy;
-                 
-                 if (nx < 0) nx = cols - 1; else if (nx >= cols) nx = 0;
-                 if (ny < 0) ny = rows - 1; else if (ny >= rows) ny = 0;
-                 
-                 let blocked = false;
-                 for (let obs of obstaclesRef.current) {
-                     if (obs.x === nx && obs.y === ny) { blocked = true; break; }
-                 }
-                 if (!blocked) {
-                    return { ...e, x: nx, y: ny };
-                 }
-                 return e;
-             });
-             enemiesRef.current = next;
-             return next;
-         });
+      if (enemyTicksRef.current >= 4) {
+        enemyTicksRef.current = 0;
+        setEnemies(prev => {
+          const next = prev.map(e => {
+            let dx = Math.sign(snakeHead.x - e.x);
+            let dy = Math.sign(snakeHead.y - e.y);
+
+            let nx = e.x;
+            let ny = e.y;
+            if (Math.random() > 0.5) nx += dx;
+            else ny += dy;
+
+            if (nx < 0) nx = cols - 1; else if (nx >= cols) nx = 0;
+            if (ny < 0) ny = rows - 1; else if (ny >= rows) ny = 0;
+
+            let blocked = false;
+            for (let obs of obstaclesRef.current) {
+              if (obs.x === nx && obs.y === ny) { blocked = true; break; }
+            }
+            if (!blocked) return { ...e, x: nx, y: ny };
+            return e;
+          });
+          enemiesRef.current = next;
+          return next;
+        });
       }
     },
     [cols, rows],
   );
 
   return {
-    obstacles,
-    obstaclesRef,
-    foods,
-    foodsRef,
-    portals,
-    portalsRef,
-    enemies,
-    enemiesRef,
-    resetWorld,
-    updateWorld,
-    removeAndRespawnFood,
-    destroyObstacle,
+    obstacles, obstaclesRef,
+    foods, foodsRef,
+    portals, portalsRef,
+    enemies, enemiesRef,
+    resetWorld, updateWorld,
+    removeAndRespawnFood, destroyObstacle,
   };
 };
 

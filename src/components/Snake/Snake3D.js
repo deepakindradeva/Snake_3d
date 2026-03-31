@@ -4,19 +4,18 @@ import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { TextureLoader } from "three";
 import { Trail } from "@react-three/drei";
+import { DEFAULT_CHARACTER } from "../../utils/characters";
 
-const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" }) => {
+const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, character = DEFAULT_CHARACTER }) => {
   const meshRef = useRef();
   const headRef = useRef();
   const tailRef = useRef();
 
-  // 1. LOAD TEXTURES
   const [colorMap, normalMap] = useLoader(TextureLoader, [
     "/snake-skin.jpg",
     "/snake-normal.jpg",
   ]);
 
-  // 2. CONFIGURE TEXTURES
   useEffect(() => {
     [colorMap, normalMap].forEach((tex) => {
       tex.wrapS = THREE.RepeatWrapping;
@@ -29,43 +28,33 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
     };
   }, [colorMap, normalMap]);
 
-  // MATERIAL CONFIG VIA SKIN
+  // Derive material props from character.visual — falls back to default skin textures
   const skinProps = useMemo(() => {
-    if (skin === "neon") {
-      return {
-        color: "#00E5FF",
-        emissive: "#00E5FF",
-        emissiveIntensity: 0.8,
-        roughness: 0.1,
-        metalness: 0.9,
-        map: null,
-        normalMap: null,
-      };
+    const v = character?.visual;
+    if (!v) {
+      return { color: "#81C784", map: colorMap, normalMap, roughness: 0.4, metalness: 0.1 };
     }
-    if (skin === "robot") {
-      return {
-        color: "#9E9E9E",
-        roughness: 0.5,
-        metalness: 0.9,
-        map: null,
-        normalMap: null,
-      };
-    }
+    // Characters with no texture (non-default skin ids) use solid colour
+    const useTexture = character.skin === "default";
     return {
-      color: "#81C784", 
-      map: colorMap,
-      normalMap: normalMap,
-      roughness: 0.4,
-      metalness: 0.1,
+      color: v.bodyColor,
+      emissive: v.emissive,
+      emissiveIntensity: v.emissiveIntensity,
+      roughness: v.roughness,
+      metalness: v.metalness,
+      map: useTexture ? colorMap : null,
+      normalMap: useTexture ? normalMap : null,
     };
-  }, [skin, colorMap, normalMap]);
+  }, [character, colorMap, normalMap]);
 
-  // 3. VISUAL STATE
+  const eyeColor   = character?.visual?.eyeColor   ?? "#FFEB3B";
+  const tongueColor = character?.visual?.tongueColor ?? "#D50000";
+  const trailColor  = character?.visual?.trailColor  ?? null;
+
   const [visualPoints, setVisualPoints] = useState(
     snake.map((p) => new THREE.Vector3(p.x, 0, p.y)),
   );
 
-  // Sync visual points size with logical snake size
   useEffect(() => {
     if (snake.length > visualPoints.length) {
       const tail = visualPoints[visualPoints.length - 1];
@@ -76,11 +65,9 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snake.length]);
 
-  // 4. ANIMATION LOOP
   useFrame((state, delta) => {
     if (!meshRef.current) return;
 
-    // --- A. SMOOTH MOVEMENT & SLITHER LOGIC ---
     const speed = delta * 12;
     const time = state.clock.elapsedTime;
 
@@ -88,80 +75,57 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
       if (visualPoints[i]) {
         const targetVec = new THREE.Vector3(target.x, 0, target.y);
 
-        // SLITHER CALCULATION (Moderate Wiggle from before)
         if (i > 0) {
           const prev = snake[i - 1] || snake[0];
           const curr = snake[i];
-
           const dx = prev.x - curr.x;
           const dy = prev.y - curr.y;
-
           const waveFreq = 0.6;
-          const waveAmp = 0.18;
+          const waveAmp  = 0.18;
           const waveSpeed = 8;
           const wave = Math.sin(time * waveSpeed + i * waveFreq) * waveAmp;
-
-          if (Math.abs(dx) > Math.abs(dy)) {
-            targetVec.z += wave;
-          } else {
-            targetVec.x += wave;
-          }
+          if (Math.abs(dx) > Math.abs(dy)) targetVec.z += wave;
+          else                              targetVec.x += wave;
         }
         visualPoints[i].lerp(targetVec, speed);
       }
     });
 
-    // --- B. GENERATE GEOMETRY ---
     const curve = new THREE.CatmullRomCurve3(visualPoints);
     curve.curveType = "centripetal";
-    curve.tension = 0.5;
+    curve.tension   = 0.5;
 
-    const segments = snake.length * 5;
+    const segments       = snake.length * 5;
     const radialSegments = 8;
 
-    // Geometry props (Radius 0.25)
-    const geometry = new THREE.TubeGeometry(
-      curve,
-      segments,
-      0.25,
-      radialSegments,
-      false,
-    );
+    const geometry = new THREE.TubeGeometry(curve, segments, 0.25, radialSegments, false);
 
-    // --- C. TAPER TAIL LOGIC ---
+    // Taper tail
     const pos = geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = pos.getZ(i);
-
+      const x = pos.getX(i); const y = pos.getY(i); const z = pos.getZ(i);
       const p = new THREE.Vector3(x, y, z);
       const ringIndex = Math.floor(i / (radialSegments + 1));
       const u = ringIndex / segments;
-
       let thickness = 1.0;
-      if (u > 0.7) {
-        thickness = 1.0 - ((u - 0.7) / 0.3) * 0.9;
-      }
-
+      if (u > 0.7) thickness = 1.0 - ((u - 0.7) / 0.3) * 0.9;
       const center = curve.getPointAt(Math.min(u, 1));
       const dir = new THREE.Vector3().subVectors(p, center);
-
       dir.y *= 0.85;
       dir.multiplyScalar(thickness);
-
       const newPos = new THREE.Vector3().addVectors(center, dir);
       pos.setXYZ(i, newPos.x, newPos.y, newPos.z);
     }
     geometry.computeVertexNormals();
 
-    colorMap.repeat.y = snake.length * 0.5;
-    normalMap.repeat.y = snake.length * 0.5;
+    if (colorMap) {
+      colorMap.repeat.y  = snake.length * 0.5;
+      normalMap.repeat.y = snake.length * 0.5;
+    }
 
     meshRef.current.geometry.dispose();
     meshRef.current.geometry = geometry;
 
-    // --- D. UPDATE HEAD & TAIL ---
     if (headRef.current && visualPoints[0] && visualPoints[1]) {
       headRef.current.position.copy(visualPoints[0]);
       headRef.current.lookAt(visualPoints[1]);
@@ -174,7 +138,7 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
       tailRef.current.scale.set(0.08, 0.08, 0.08);
     }
 
-    // --- E. EFFECTS (Invincibility only) ---
+    // Invincibility flash
     if (isInvincible) {
       const flash = Math.sin(state.clock.elapsedTime * 15) * 0.5 + 0.5;
       meshRef.current.material.opacity = 0.5 + flash * 0.5;
@@ -184,9 +148,8 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
     } else {
       meshRef.current.material.opacity = 1.0;
       meshRef.current.material.transparent = false;
-      // Reset to original (No glow)
-      meshRef.current.material.emissive.setHex(0x000000);
-      meshRef.current.material.emissiveIntensity = 0;
+      meshRef.current.material.emissive.setStyle(skinProps.emissive || "#000000");
+      meshRef.current.material.emissiveIntensity = skinProps.emissiveIntensity || 0;
     }
   });
 
@@ -208,19 +171,12 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
           <meshStandardMaterial {...skinProps} />
         </mesh>
 
-        {/* Shield Bubble */}
         {hasShield && (
           <mesh>
             <sphereGeometry args={[0.8, 16, 16]} />
-            <meshStandardMaterial
-              color="#448AFF"
-              transparent
-              opacity={0.3}
-              side={THREE.DoubleSide}
-            />
+            <meshStandardMaterial color="#448AFF" transparent opacity={0.3} side={THREE.DoubleSide} />
           </mesh>
         )}
-        {/* Magnet Ring */}
         {isMagnet && (
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <ringGeometry args={[1.5, 1.6, 32]} />
@@ -228,25 +184,16 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
           </mesh>
         )}
 
-        {/* Eyes - Reverted to Original Yellow/Gold */}
+        {/* Eyes */}
         <group position={[0, 0.2, 0.25]}>
           <mesh position={[0.15, 0, 0]}>
             <sphereGeometry args={[0.12]} />
-            <meshStandardMaterial
-              color="#FFEB3B"
-              emissive="#FBC02D"
-              emissiveIntensity={0.5}
-            />
+            <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={0.5} />
           </mesh>
           <mesh position={[-0.15, 0, 0]}>
             <sphereGeometry args={[0.12]} />
-            <meshStandardMaterial
-              color="#FFEB3B"
-              emissive="#FBC02D"
-              emissiveIntensity={0.5}
-            />
+            <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={0.5} />
           </mesh>
-          {/* Pupils */}
           <mesh position={[0.18, 0.05, 0.08]} scale={[0.5, 1.5, 0.5]}>
             <sphereGeometry args={[0.06]} />
             <meshStandardMaterial color="black" />
@@ -256,10 +203,11 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
             <meshStandardMaterial color="black" />
           </mesh>
         </group>
+
         {/* Tongue */}
         <mesh position={[0, -0.1, 0.4]} rotation={[0.2, 0, 0]}>
           <cylinderGeometry args={[0.02, 0.08, 0.4]} />
-          <meshStandardMaterial color="#D50000" roughness={0.1} />
+          <meshStandardMaterial color={tongueColor} roughness={0.1} />
         </mesh>
       </group>
 
@@ -267,16 +215,11 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, skin = "default" })
       <mesh ref={tailRef} castShadow>
         <sphereGeometry args={[0.25, 16, 16]} />
         <meshStandardMaterial {...skinProps} />
-        {skin === "neon" && (
-          <Trail
-            width={0.5}
-            color="#00E5FF"
-            length={10} 
-            decay={2}   
-          >
+        {trailColor && (
+          <Trail width={0.5} color={trailColor} length={10} decay={2}>
             <mesh>
-               <sphereGeometry args={[0.1]} />
-               <meshBasicMaterial opacity={0} transparent />
+              <sphereGeometry args={[0.1]} />
+              <meshBasicMaterial opacity={0} transparent />
             </mesh>
           </Trail>
         )}

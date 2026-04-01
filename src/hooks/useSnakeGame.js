@@ -393,7 +393,20 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHA
           sea_grape: "#9575CD", kelp: "#66BB6A", pearl: "#F5F5F5", sea_star: "#FFD740",
         }[eatenFood.type] || "#FFF";
 
-        if (points > 0) addFloatingScore(points, color, eatenFood.x, eatenFood.y);
+        // Build a concise floating label so food feedback never blocks the game
+        let floatLabel;
+        if (fruitStats.effect === "invincible")        floatLabel = "⭐ INVINCIBLE!";
+        else if (fruitStats.effect === "shield")       floatLabel = "🛡️ SHIELD!";
+        else if (fruitStats.effect === "magnet")       floatLabel = "🧲 MAGNET!";
+        else if (points > 0) {
+          floatLabel = `+${points}`;
+          if (fruitStats.speedMod > 0)         floatLabel += " FROST";
+          else if (fruitStats.grow < 0)        floatLabel += " SHRINK";
+          else if (fruitStats.speedMod < -15)  floatLabel += " HASTE";
+          else if (fruitStats.grow >= 3)       floatLabel += " +TAIL";
+          if (newCombo > 1)                    floatLabel += ` x${newCombo}`;
+        }
+        if (floatLabel) addFloatingScore(points, color, eatenFood.x, eatenFood.y, floatLabel);
 
         runStatsRef.current.totalEaten++;
         runStatsRef.current.fruitCounts[eatenFood.type] = (runStatsRef.current.fruitCounts[eatenFood.type] || 0) + 1;
@@ -448,19 +461,6 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHA
 
         removeAndRespawnFood(eatenFood.id, newSnake);
 
-        // Build event description with biome-aware names
-        const displayName = eatenFood.type.replace(/_/g, " ").toUpperCase();
-        let evtDesc = points > 0 ? `+${points} Score` : "Special Effect!";
-        if (fruitStats.effect === "invincible")  evtDesc = "INVINCIBLE! 5s Immunity!";
-        else if (fruitStats.effect === "shield") evtDesc = "SHIELD! Block 1 Crash!";
-        else if (fruitStats.effect === "magnet") evtDesc = "MAGNET! Pulls nearby food!";
-        else if (fruitStats.speedMod > 0)        evtDesc += " (FROST: Slowed!)";
-        else if (fruitStats.grow < 0)            evtDesc += " (SHRINK: -Tail!)";
-        else if (fruitStats.speedMod < -15)      evtDesc += " (HASTE: Speed Up!)";
-        else if (fruitStats.grow >= 3)           evtDesc += " (+3 Tail!)";
-        if (newCombo > 1 && points > 0) evtDesc += ` (x${newCombo} Combo!)`;
-
-        triggerEvent(`${displayName}`, evtDesc, color);
         checkAchievements(runStatsRef.current);
       } else {
         if (growthBankRef.current > 0) growthBankRef.current -= 1;

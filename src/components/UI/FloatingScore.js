@@ -12,7 +12,7 @@ const FloatingScore = ({ id, value, label, color, x, y, onDone }) => {
     const t = setTimeout(() => {
       setVisible(false);
       onDone(id);
-    }, 900);
+    }, 1200);
     return () => clearTimeout(t);
   }, [id, onDone]);
 
@@ -30,7 +30,7 @@ const FloatingScore = ({ id, value, label, color, x, y, onDone }) => {
         transform: "translate(-50%, -50%)",
         pointerEvents: "none",
         zIndex: 500,
-        animation: "floatUp 0.9s ease-out forwards",
+        animation: "floatUp 1.2s ease-out forwards",
         color: color || "#FFD700",
         fontFamily: "'Outfit', sans-serif",
         fontWeight: 900,

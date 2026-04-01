@@ -3,8 +3,15 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { BIOME_CONFIG } from "../../utils/constants";
 
+// Floor extends well beyond the fog far-clip so the edge is never visible.
+const FLOOR_SCALE = 5;
+
 const Arena = ({ width, height, biome = "forest" }) => {
   const cfg = BIOME_CONFIG[biome] || BIOME_CONFIG.forest;
+
+  // Actual rendered plane size — large enough that the edge is always past fog.
+  const floorW = width  * FLOOR_SCALE;
+  const floorH = height * FLOOR_SCALE;
 
   const texture = useMemo(() => {
     const canvas = document.createElement("canvas");
@@ -45,15 +52,17 @@ const Arena = ({ width, height, biome = "forest" }) => {
     tex.magFilter  = THREE.NearestFilter;
     tex.wrapS      = THREE.RepeatWrapping;
     tex.wrapT      = THREE.RepeatWrapping;
-    tex.repeat.set(width / 2, height / 2);
+    // Maintain same checker density per world unit as the original grid-sized floor.
+    tex.repeat.set(floorW / 2, floorH / 2);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
-  }, [width, height, biome, cfg]);
+  }, [floorW, floorH, biome, cfg]);
 
   return (
+    // Group stays centered on the grid; the plane just extends further in all directions.
     <group position={[width / 2 - 0.5, -0.5, height / 2 - 0.5]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[width, height]} />
+        <planeGeometry args={[floorW, floorH]} />
         <meshStandardMaterial map={texture} roughness={cfg.floorRoughness ?? 0.8} />
       </mesh>
     </group>

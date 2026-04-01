@@ -7,7 +7,8 @@ import {
 } from "../utils/gameUtils";
 import { getLevelConfig, getBiome, BIOME_CONFIG } from "../utils/constants";
 
-const MAX_FOOD_ITEMS = 6;
+const MAX_FOOD_ITEMS = 20;
+const FOOD_SPAWN_RADIUS = 28; // food always spawns within this many cells of the snake head
 
 const useWorld = (cols, rows, difficulty) => {
   const [obstacles, setObstacles] = useState([]);
@@ -28,13 +29,20 @@ const useWorld = (cols, rows, difficulty) => {
   const createFood = useCallback(
     (snakeBody, idOverride = null) => {
       const nextType = getRandomFruit(biomeRef.current);
+      const head = snakeBody[0] || { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
       let foodX, foodY;
       let isOccupied = true;
       let attempts = 0;
 
-      while (isOccupied && attempts < 100) {
-        foodX = Math.floor(1 + Math.random() * (cols - 2));
-        foodY = Math.floor(1 + Math.random() * (rows - 2));
+      while (isOccupied && attempts < 120) {
+        // Spawn within FOOD_SPAWN_RADIUS of the snake head, min 4 cells away
+        const angle = Math.random() * Math.PI * 2;
+        const dist  = 4 + Math.random() * (FOOD_SPAWN_RADIUS - 4);
+        foodX = Math.round(head.x + Math.cos(angle) * dist);
+        foodY = Math.round(head.y + Math.sin(angle) * dist);
+        // Clamp to grid
+        foodX = Math.max(1, Math.min(cols - 2, foodX));
+        foodY = Math.max(1, Math.min(rows - 2, foodY));
 
         isOccupied = false;
         for (let obs of obstaclesRef.current) {
@@ -43,6 +51,11 @@ const useWorld = (cols, rows, difficulty) => {
         if (!isOccupied) {
           for (let segment of snakeBody) {
             if (segment.x === foodX && segment.y === foodY) { isOccupied = true; break; }
+          }
+        }
+        if (!isOccupied) {
+          for (let f of foodsRef.current) {
+            if (f.id !== idOverride && f.x === foodX && f.y === foodY) { isOccupied = true; break; }
           }
         }
         attempts++;
@@ -151,6 +164,49 @@ const useWorld = (cols, rows, difficulty) => {
     });
   }, []);
 
+  // Spawns `count` new obstacles near the snake head — called each time food is eaten
+  // so obstacle density grows proportionally to food consumed.
+  const spawnObstacleNear = useCallback((snakeBody, count = 1) => {
+    const obstacleTypes = getBiomeObstacleTypes(biomeRef.current);
+    const head = snakeBody[0];
+    const MAX_TOTAL = 180;
+
+    setObstacles(prev => {
+      if (prev.length >= MAX_TOTAL) return prev;
+      const next = [...prev];
+
+      for (let n = 0; n < count && next.length < MAX_TOTAL; n++) {
+        let pos = null;
+        let attempts = 0;
+
+        while (!pos && attempts < 80) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist  = 8 + Math.random() * 18; // 8–26 cells from head, within fog
+          const cx = Math.max(1, Math.min(cols - 2, Math.round(head.x + Math.cos(angle) * dist)));
+          const cy = Math.max(1, Math.min(rows - 2, Math.round(head.y + Math.sin(angle) * dist)));
+
+          let occupied = false;
+          for (let o of next)       { if (o.x === cx && o.y === cy) { occupied = true; break; } }
+          if (!occupied) for (let s of snakeBody) { if (s.x === cx && s.y === cy) { occupied = true; break; } }
+          if (!occupied) pos = { x: cx, y: cy };
+          attempts++;
+        }
+
+        if (pos) {
+          next.push({
+            ...pos,
+            type: obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)],
+            id: Date.now() + Math.random() + n,
+            scale: 0.8 + Math.random() * 0.8,
+          });
+        }
+      }
+
+      obstaclesRef.current = next;
+      return next;
+    });
+  }, [cols, rows]);
+
   const enemyTicksRef = useRef(0);
 
   const updateWorld = useCallback(
@@ -192,7 +248,7 @@ const useWorld = (cols, rows, difficulty) => {
     portals, portalsRef,
     enemies, enemiesRef,
     resetWorld, updateWorld,
-    removeAndRespawnFood, destroyObstacle,
+    removeAndRespawnFood, destroyObstacle, spawnObstacleNear,
   };
 };
 

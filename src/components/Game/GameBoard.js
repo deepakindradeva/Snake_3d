@@ -17,8 +17,8 @@ import { Loader } from "@react-three/drei";
 import "./GameBoard.css";
 
 const GameBoard = ({ onGameEnd, difficulty, character = DEFAULT_CHARACTER, highScore = 0 }) => {
-  const COLS = 60;
-  const ROWS = 60;
+  const COLS = 150;
+  const ROWS = 150;
 
   const [cameraMode, setCameraMode] = useState("FOLLOW");
 
@@ -27,7 +27,7 @@ const GameBoard = ({ onGameEnd, difficulty, character = DEFAULT_CHARACTER, highS
     gameOver, score, distance, level, speed, moveSnake, resetGame,
     dir, turnLeft, turnRight, isPaused, togglePause,
     isInvincible, hasShield, isMagnet,
-    lives, combo, activeEvent,
+    lives, combo, activeEvent, snakeEffect,
     levelComplete, advanceLevel,
     floatingScores, removeFloatingScore,
     runStats, isShaking,
@@ -108,6 +108,7 @@ const GameBoard = ({ onGameEnd, difficulty, character = DEFAULT_CHARACTER, highS
         removeEffect={removeEffect} dir={dir}
         cols={COLS} rows={ROWS}
         isInvincible={isInvincible} hasShield={hasShield} isMagnet={isMagnet}
+        snakeEffect={snakeEffect}
         character={character} cameraMode={cameraMode}
         moveSnake={moveSnake} speed={speed}
         isPaused={isPaused} gameOver={gameOver}

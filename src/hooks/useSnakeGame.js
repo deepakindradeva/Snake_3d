@@ -7,6 +7,26 @@ import { ALL_FRUIT_TYPES, FRUIT_TYPES } from "../utils/gameUtils";
 import { getLevelTarget, getLevelConfig } from "../utils/constants";
 import { DEFAULT_CHARACTER } from "../utils/characters";
 
+// ─── Per-food snake body effect config (emissive glow + special type) ────────
+const SNAKE_EFFECT_MAP = {
+  banana:          { emissive: "#FFD600", intensity: 0.9, type: "haste",  duration: 1500 },
+  hot_cocoa:       { emissive: "#FF8F00", intensity: 0.7, type: "haste",  duration: 1000 },
+  cherry:          { emissive: "#e91e63", intensity: 1.1, type: "grow",   duration: 900  },
+  mushroom:        { emissive: "#FF7043", intensity: 0.9, type: "shrink", duration: 700  },
+  ice:             { emissive: "#00E5FF", intensity: 0.9, type: "frost",  duration: 2000 },
+  icicle:          { emissive: "#B3E5FC", intensity: 0.8, type: "frost",  duration: 2000 },
+  mirage:          { emissive: "#80DEEA", intensity: 0.7, type: "frost",  duration: 1500 },
+  aurora_shard:    { emissive: "#80D8FF", intensity: 1.0, type: "frost",  duration: 2500 },
+  snowberry:       { emissive: "#E1F5FE", intensity: 0.8, type: "frost",  duration: 1200 },
+  ember_fruit:     { emissive: "#FF3D00", intensity: 1.0, type: "fire",   duration: 1200 },
+  magma_crystal:   { emissive: "#FF1744", intensity: 1.2, type: "fire",   duration: 1500 },
+  phoenix_feather: { emissive: "#FF6D00", intensity: 1.1, type: "fire",   duration: 2000 },
+  brimstone:       { emissive: "#BF360C", intensity: 0.7, type: "fire",   duration: 900  },
+  pearl:           { emissive: "#E0E0E0", intensity: 0.9, type: "ocean",  duration: 1000 },
+  sea_star:        { emissive: "#FFD740", intensity: 1.0, type: "ocean",  duration: 1000 },
+  sea_grape:       { emissive: "#CE93D8", intensity: 0.7, type: "ocean",  duration: 800  },
+};
+
 // ─── Achievement Definitions ────────────────────────────────────────────────
 export const ACHIEVEMENTS = [
   { id: "first_eat",    name: "First Bite",        icon: "🍎", desc: "Eat your first fruit",               check: (s) => s.totalEaten >= 1 },
@@ -64,6 +84,9 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHA
   const [lives, setLives] = useState(startLives);
   const [activeEvent, setActiveEvent] = useState(null);
   const activeEventTimerRef = useRef(null);
+
+  // ── Snake body visual effect (set on food eat, fades automatically) ──
+  const [snakeEffect, setSnakeEffect] = useState(null);
 
   // ── Floating scores ──
   const [floatingScores, setFloatingScores] = useState([]);
@@ -129,7 +152,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHA
   const [effects, setEffects] = useState([]);
 
   const { snake, setSnake, dir, setDir, growthBankRef, addGrowth, resetSnake, turnLeft, turnRight } = useSnake(cols, rows);
-  const { obstacles, obstaclesRef, foods, foodsRef, portals, portalsRef, enemies, enemiesRef, resetWorld, updateWorld, removeAndRespawnFood, destroyObstacle } = useWorld(cols, rows, difficulty);
+  const { obstacles, obstaclesRef, foods, foodsRef, portals, portalsRef, enemies, enemiesRef, resetWorld, updateWorld, removeAndRespawnFood, destroyObstacle, spawnObstacleNear } = useWorld(cols, rows, difficulty);
 
   // ── Survival timer ──
   const startTimeRef = useRef(null);
@@ -408,6 +431,16 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHA
         }
         if (floatLabel) addFloatingScore(points, color, eatenFood.x, eatenFood.y, floatLabel);
 
+        // Snake body visual reaction — mapped per food type, else generic color pulse
+        if (!fruitStats.effect) {
+          const effCfg = SNAKE_EFFECT_MAP[eatenFood.type];
+          if (effCfg) {
+            setSnakeEffect({ ...effCfg, expiresAt: Date.now() + effCfg.duration });
+          } else if (points > 0) {
+            setSnakeEffect({ emissive: color, intensity: 0.6, type: "pulse", duration: 500, expiresAt: Date.now() + 500 });
+          }
+        }
+
         runStatsRef.current.totalEaten++;
         runStatsRef.current.fruitCounts[eatenFood.type] = (runStatsRef.current.fruitCounts[eatenFood.type] || 0) + 1;
         if (newCombo > runStatsRef.current.maxCombo) runStatsRef.current.maxCombo = newCombo;
@@ -461,6 +494,10 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHA
 
         removeAndRespawnFood(eatenFood.id, newSnake);
 
+        // Spawn obstacles proportional to food eaten — world gets denser as you eat
+        const obsPerFood = fruitStats.effect || fruitStats.grow >= 3 ? 2 : 1;
+        spawnObstacleNear(newSnake, obsPerFood);
+
         checkAchievements(runStatsRef.current);
       } else {
         if (growthBankRef.current > 0) growthBankRef.current -= 1;
@@ -475,7 +512,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHA
     growthBankRef, addGrowth, updateWorld, removeAndRespawnFood,
     difficulty, cols, rows, setSnake, activeEvent, lives,
     triggerEvent, play, addFloatingScore, triggerShake, checkAchievements,
-    character,
+    spawnObstacleNear, character,
   ]);
 
   // ── Keyboard controls ──
@@ -505,7 +542,7 @@ const useSnakeGame = (cols, rows, difficulty = "MEDIUM", character = DEFAULT_CHA
     isInvincible, hasShield, isMagnet,
     lives, level, combo,
     levelComplete, advanceLevel,
-    activeEvent,
+    activeEvent, snakeEffect,
     floatingScores, removeFloatingScore,
     runStats,
     isShaking,

@@ -18,12 +18,12 @@ export const getLevelTarget = (level) => 5 * level * (level + 1);
 export const getLevelConfig = (level, difficulty) => {
   const baseSpeed   = difficulty === "HARD" ? 150 : difficulty === "EASY" ? 350 : 250;
   const minSpeed    = difficulty === "HARD" ? 100 : 150;
-  const baseObs     = difficulty === "EASY" ? 20  : difficulty === "HARD" ? 80  : 40;
-  const baseEnemies = difficulty === "EASY" ? 0   : difficulty === "HARD" ? 3   : 1;
+  const baseObs     = difficulty === "EASY" ? 50  : difficulty === "HARD" ? 120 : 80;
+  const baseEnemies = difficulty === "EASY" ? 0   : difficulty === "HARD" ? 4   : 2;
   return {
     speed:       Math.max(minSpeed, baseSpeed - (level - 1) * 15),
-    obstacles:   Math.min(120,      baseObs   + (level - 1) * 5),
-    enemies:     Math.min(8,        baseEnemies + Math.floor((level - 1) / 2)),
+    obstacles:   Math.min(180,      baseObs   + (level - 1) * 8),
+    enemies:     Math.min(15,       baseEnemies + Math.floor((level - 1) / 2)),
     scoreTarget: getLevelTarget(level),
   };
 };
@@ -49,7 +49,7 @@ export const BIOME_CONFIG = {
     fogNear: 12,
     fogFar: 40,
     envPreset: "park",
-    obstacleTypes: ["tree", "rock", "bush", "tree", "tree"],
+    obstacleTypes: ["tree", "tree", "tree", "tree", "rock", "bush", "tree"],
     enemyType: "spider",
     fruitPool: ["apple", "banana", "cherry", "ice", "mushroom", "star", "shield", "magnet"],
     shadowColor: "#2E7D32",

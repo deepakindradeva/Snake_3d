@@ -69,6 +69,7 @@ const GameScene = ({
   snake, foods, obstacles, portals, enemies, effects, removeEffect,
   dir, cols, rows,
   isInvincible, hasShield, isMagnet,
+  snakeEffect,
   character,
   moveSnake, speed, isPaused, gameOver, levelComplete,
   activeEvent, level = 1,
@@ -81,8 +82,8 @@ const GameScene = ({
   return (
     <Canvas
       shadows={!isMobile}
-      dpr={[1, 1.5]}
-      performance={{ min: 0.1 }}
+      dpr={[1, isMobile ? 1 : 1.2]}
+      performance={{ min: 0.5 }}
       gl={{ antialias: false, powerPreference: "default", preserveDrawingBuffer: false }}
     >
       <Suspense fallback={null}>
@@ -104,6 +105,7 @@ const GameScene = ({
           isInvincible={isInvincible}
           hasShield={hasShield}
           isMagnet={isMagnet}
+          snakeEffect={snakeEffect}
           character={character}
         />
 
@@ -123,14 +125,17 @@ const GameScene = ({
 
         <BiomeObstacles3D obstacles={obstacles} biome={biome} />
 
-        <ContactShadows
-          resolution={512}
-          scale={50}
-          blur={2}
-          opacity={0.4}
-          far={3}
-          color={biomeCfg.shadowColor || "#2E7D32"}
-        />
+        {!isMobile && (
+          <ContactShadows
+            resolution={256}
+            scale={40}
+            blur={1.5}
+            opacity={0.3}
+            far={3}
+            frames={1}
+            color={biomeCfg.shadowColor || "#2E7D32"}
+          />
+        )}
 
         <Preload all />
       </Suspense>

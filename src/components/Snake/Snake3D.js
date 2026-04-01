@@ -6,7 +6,7 @@ import { TextureLoader } from "three";
 import { Trail } from "@react-three/drei";
 import { DEFAULT_CHARACTER } from "../../utils/characters";
 
-const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, character = DEFAULT_CHARACTER }) => {
+const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, snakeEffect, character = DEFAULT_CHARACTER }) => {
   const meshRef = useRef();
   const headRef = useRef();
   const tailRef = useRef();
@@ -81,7 +81,9 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, character = DEFAULT
           const dx = prev.x - curr.x;
           const dy = prev.y - curr.y;
           const waveFreq = 0.6;
-          const waveAmp  = 0.18;
+          const effNow = Date.now();
+          const waveAmp = (snakeEffect && effNow < snakeEffect.expiresAt && snakeEffect.type === "haste")
+            ? 0.34 : 0.18;
           const waveSpeed = 8;
           const wave = Math.sin(time * waveSpeed + i * waveFreq) * waveAmp;
           if (Math.abs(dx) > Math.abs(dy)) targetVec.z += wave;
@@ -95,26 +97,28 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, character = DEFAULT
     curve.curveType = "centripetal";
     curve.tension   = 0.5;
 
-    const segments       = snake.length * 5;
-    const radialSegments = 8;
+    const segments       = snake.length * 3;
+    const radialSegments = 5;
 
     const geometry = new THREE.TubeGeometry(curve, segments, 0.25, radialSegments, false);
 
-    // Taper tail
+    // Taper tail — reuse vectors to avoid per-frame GC pressure
     const pos = geometry.attributes.position;
+    const _p   = new THREE.Vector3();
+    const _c   = new THREE.Vector3();
+    const _dir = new THREE.Vector3();
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i); const y = pos.getY(i); const z = pos.getZ(i);
-      const p = new THREE.Vector3(x, y, z);
+      _p.set(pos.getX(i), pos.getY(i), pos.getZ(i));
       const ringIndex = Math.floor(i / (radialSegments + 1));
       const u = ringIndex / segments;
       let thickness = 1.0;
       if (u > 0.7) thickness = 1.0 - ((u - 0.7) / 0.3) * 0.9;
-      const center = curve.getPointAt(Math.min(u, 1));
-      const dir = new THREE.Vector3().subVectors(p, center);
-      dir.y *= 0.85;
-      dir.multiplyScalar(thickness);
-      const newPos = new THREE.Vector3().addVectors(center, dir);
-      pos.setXYZ(i, newPos.x, newPos.y, newPos.z);
+      curve.getPointAt(Math.min(u, 1), _c);
+      _dir.subVectors(_p, _c);
+      _dir.y *= 0.85;
+      _dir.multiplyScalar(thickness);
+      _p.addVectors(_c, _dir);
+      pos.setXYZ(i, _p.x, _p.y, _p.z);
     }
     geometry.computeVertexNormals();
 
@@ -138,18 +142,56 @@ const Snake3D = ({ snake, isInvincible, hasShield, isMagnet, character = DEFAULT
       tailRef.current.scale.set(0.08, 0.08, 0.08);
     }
 
-    // Invincibility flash
+    // ── Material / visual effects ──
+    const mat = meshRef.current.material;
+    const now = Date.now();
+    const eff = snakeEffect;
+    const effActive = eff && now < eff.expiresAt;
+    const effProgress = effActive ? (eff.expiresAt - now) / eff.duration : 0; // 1→0
+
     if (isInvincible) {
-      const flash = Math.sin(state.clock.elapsedTime * 15) * 0.5 + 0.5;
-      meshRef.current.material.opacity = 0.5 + flash * 0.5;
-      meshRef.current.material.transparent = true;
-      meshRef.current.material.emissive.setHex(0xffffff);
-      meshRef.current.material.emissiveIntensity = 0.3 * flash;
+      // Rapid white flash
+      const flash = Math.sin(time * 15) * 0.5 + 0.5;
+      mat.opacity = 0.5 + flash * 0.5;
+      mat.transparent = true;
+      mat.emissive.setHex(0xffffff);
+      mat.emissiveIntensity = 0.3 * flash;
+      mat.metalness = skinProps.metalness || 0;
+      if (headRef.current) headRef.current.scale.setScalar(0.65);
+    } else if (effActive) {
+      mat.opacity = 1.0;
+      mat.transparent = eff.type === "frost";
+
+      // Frost: metallic + semi-transparent
+      if (eff.type === "frost") {
+        mat.metalness = THREE.MathUtils.lerp(skinProps.metalness || 0, 0.95, effProgress);
+        mat.opacity   = THREE.MathUtils.lerp(1.0, 0.68, effProgress);
+      } else {
+        mat.metalness = skinProps.metalness || 0;
+      }
+
+      // Fire: flickering emissive
+      const flicker = eff.type === "fire"
+        ? 0.65 + Math.sin(time * 22) * 0.35
+        : 1.0;
+      mat.emissive.setStyle(eff.emissive);
+      mat.emissiveIntensity = eff.intensity * effProgress * flicker;
+
+      // Grow: head scale pulse
+      if (headRef.current) {
+        const pulse = eff.type === "grow"
+          ? 1.0 + Math.sin(effProgress * Math.PI) * 0.38
+          : 1.0;
+        headRef.current.scale.setScalar(0.65 * pulse);
+      }
     } else {
-      meshRef.current.material.opacity = 1.0;
-      meshRef.current.material.transparent = false;
-      meshRef.current.material.emissive.setStyle(skinProps.emissive || "#000000");
-      meshRef.current.material.emissiveIntensity = skinProps.emissiveIntensity || 0;
+      // Reset to base skin
+      mat.opacity = 1.0;
+      mat.transparent = false;
+      mat.emissive.setStyle(skinProps.emissive || "#000000");
+      mat.emissiveIntensity = skinProps.emissiveIntensity || 0;
+      mat.metalness = skinProps.metalness || 0;
+      if (headRef.current) headRef.current.scale.setScalar(0.65);
     }
   });
 

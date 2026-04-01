@@ -86,7 +86,6 @@ const Home = ({
         {CHARACTERS.map(char => {
           const isUnlocked = (unlockedCharacters || ["sly"]).includes(char.id);
           const isSelected = selectedCharId === char.id;
-          const canAfford  = coins >= char.cost;
           return (
             <div
               key={char.id}

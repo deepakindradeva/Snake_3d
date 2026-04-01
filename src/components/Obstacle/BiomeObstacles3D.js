@@ -34,10 +34,7 @@ const stalagGeo     = new THREE.ConeGeometry(0.2, 1.4, 6);
 const ashPillarGeo  = new THREE.CylinderGeometry(0.22, 0.28, 1.1, 8);
 
 // Ocean
-const coralSegGeo   = new THREE.CylinderGeometry(0.07, 0.12, 0.6, 6);
 const anemoneBodyGeo = new THREE.SphereGeometry(0.3, 8, 8);
-const tentacleGeo   = new THREE.CylinderGeometry(0.03, 0.06, 0.5, 5);
-const wreckPlankGeo = new THREE.BoxGeometry(1.0, 0.08, 0.2);
 
 // ── Shared materials ─────────────────────────────────────────────────────────
 
@@ -66,15 +63,10 @@ const frozenLogMat = new THREE.MeshStandardMaterial({ color: "#78909C", roughnes
 
 // Volcano
 const lavaRockMat  = new THREE.MeshStandardMaterial({ color: "#3E2723", roughness: 0.95 });
-const lavGlow      = new THREE.MeshStandardMaterial({ color: "#FF3D00", emissive: "#FF3D00", emissiveIntensity: 0.6, roughness: 0.5 });
 const ashMat       = new THREE.MeshStandardMaterial({ color: "#212121", roughness: 1.0 });
 
 // Ocean
-const coralMat     = new THREE.MeshStandardMaterial({ color: "#FF7043", roughness: 0.7 });
-const coral2Mat    = new THREE.MeshStandardMaterial({ color: "#EC407A", roughness: 0.7 });
 const anemMat      = new THREE.MeshStandardMaterial({ color: "#CE93D8", roughness: 0.5 });
-const tentMat      = new THREE.MeshStandardMaterial({ color: "#7B1FA2", roughness: 0.6 });
-const wreckMat     = new THREE.MeshStandardMaterial({ color: "#4E342E", roughness: 1.0 });
 
 // ── Forest obstacles ─────────────────────────────────────────────────────────
 
